@@ -1,0 +1,19 @@
+#!/bin/bash
+#
+# srun command for CSCI-6360 group project.
+# USAGE: /full/path/to/./q_MC.out [--help]
+#                                 [--init dimension [outfile]]
+#                                 [--nonstop dimension outfile steps [increment]]
+#                                 [infile [outfile] steps [increment]]
+#
+#SBATCH --mail-type=END
+#SBATCH --mail-user=tany3@rpi.edu
+#SBATCH -D /gpfs/u/home/ACME/ACMEtany/scratch/JumpMove/NFOLDER
+#SBATCH --partition small
+#SBATCH -t 720
+#SBATCH -N 16
+#SBATCH -n 1024
+#SBATCH --overcommit
+#SBATCH -o /gpfs/u/home/ACME/ACMEtany/scratch/JumpMove/NFOLDER/repeat.log
+
+srun --runjob-opts="--mapping TEDCBA" /gpfs/u/home/ACME/ACMEtany/barn/05182016JumpMove/q_MC.out --nonstop 2 voronmc.000000.dat 1000000 10000 0 4 VELINV PEAKTMP
