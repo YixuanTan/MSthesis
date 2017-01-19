@@ -186,7 +186,7 @@ int main(int argc, char* argv[]) {
 	//run tessellation & simulation
 	else if (std::string(argv[1]) == std::string("--nonstop")) {
 		// bad argument list
-		if (argc!=11 && argc!=10) {
+		if (argc!=14 && argc!=13) {
 			std::cout << PROGRAM << ": bad argument list.  Use\n\n";
 			std::cout << "    " << PROGRAM << " --help\n\n";
 			std::cout << "to generate help message.\n\n";
@@ -251,11 +251,11 @@ int main(int argc, char* argv[]) {
 			exit(-1);
 		}
 
-    int high = atoi(argv[8]), width = atoi(argv[9]);
+    double velInverse = atof(argv[8]), maxTemp = atof(argv[9]), minTemp = atof(argv[10]), plat = atof(argv[11]), range = atof(argv[12]);
 
     std::string initfile;
-    if (argc==11) // if continue simulation from an existed file.
-		  initfile = argv[10];
+    if (argc==14) // if continue simulation from an existed file.
+		  initfile = argv[13];
 
     // set output file basename
 		int iterations_start = 0;
@@ -299,9 +299,9 @@ int main(int argc, char* argv[]) {
 		if (dim == 2) {
 			// tessellate
 			MMSP::grid<2,unsigned long>* grid=NULL;
-      if(argc == 10)
+      if(argc == 13)
 			  init_cycles = MMSP::generate<2>(grid, 0, nthreads);
-      else if(argc == 11){
+      else if(argc == 14){
         if(initfile.find(".txt") != std::string::npos){
           MMSP::growthexperiment<2>(grid, initfile.c_str());
         }else{
@@ -333,11 +333,11 @@ int main(int argc, char* argv[]) {
 			iocycles = rdtsc() - iocycles;
 			unsigned long allio=0;
 			double allbw = 0.0;
-double allbwsum = 0.0;
+			double allbwsum = 0.0;
 			#ifdef MPI_VERSION
 			MPI_Reduce(&iocycles, &allio, 1, MPI_UNSIGNED_LONG, MPI_MAX, 0, MPI::COMM_WORLD);
 			MPI_Reduce(&init_bw, &allbw, 1, MPI_DOUBLE, MPI_SUM, 0, MPI::COMM_WORLD);
-allbwsum += allbw;
+			allbwsum += allbw;
 			#else
 			allio=iocycles;
 			#endif
@@ -352,7 +352,7 @@ allbwsum += allbw;
 			for (int i = iterations_start; i < steps; i += increment) {
 //auto t_start = std::chrono::high_resolution_clock::now();
 
-			  comp_cycles = MMSP::update(*grid, increment, increment_finished, nthreads, step_to_nonuniform, physical_time, high, width);
+			  comp_cycles = MMSP::update(*grid, increment, increment_finished, nthreads, step_to_nonuniform, physical_time, velInverse, maxTemp, minTemp, plat, range);
      
         increment_finished += increment;
 				unsigned long allcomp = 0;
@@ -413,9 +413,9 @@ allbwsum += allbw;
 		if (dim == 3) {
 			// tessellate
 			GRID3D* grid=NULL;
-      if(argc == 10)
+      if(argc == 13)
 			  init_cycles = MMSP::generate<3>(grid, 0, nthreads);
-      else if(argc == 11){
+      else if(argc == 14){
         if(initfile.find(".txt") != std::string::npos){
           MMSP::growthexperiment<3>(grid, initfile.c_str());
         }else{
@@ -462,7 +462,7 @@ allbwsum += allbw;
 			// perform computation
 			for (int i = iterations_start; i < steps; i += increment) {
 
-			  comp_cycles = MMSP::update(*grid, increment, increment_finished, nthreads, step_to_nonuniform, physical_time, high, width);
+			  comp_cycles = MMSP::update(*grid, increment, increment_finished, nthreads, step_to_nonuniform, physical_time, velInverse, maxTemp, minTemp, plat, range);
         
         increment_finished += increment;
 				unsigned long allcomp = 0;

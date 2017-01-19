@@ -19,6 +19,7 @@
 #ifndef GRAINGROWTH_UPDATE
 #define GRAINGROWTH_UPDATE
 #include <iomanip>
+#include <fstream>
 #include <vector>
 #include <cmath>
 #include <ctime>
@@ -45,80 +46,81 @@ double R = 8.314;
 */
 
 // ---------Cu film
-double lambda = 1.1e-3/1.65; // 19e-3/(6.8/4);  // 1.1/3*1.0e-3;  //length unit is in mm, each pixel is 0.275 um
-double L_initial = 1.1e-3;  // 1.1e-3; 
+double lambda = 1.1/1*1.0e-3;  //length unit is in mm, each pixel is 0.275 um
+double L_initial = 1.1e-3; 
 double L0 = 1.1e-3; 
-double K1 = 0.5680; // 0.6200;
-double n1 = 0.5124; // 0.5130;
-double Q = 144675; //141300; // this is the value Trevor used         //144675; //fitted from Gangulee, A. ”Structure of electroplated and vapordeposited copper films. III. Recrystallization and grain growth.” Journal of Applied Physics 45.9 (1974): 3749-3756.
+double K1 = 0.6263;
+double m = 2.0697;
+double n1 = 1.0/m;
+double Q = 146000; //fitted from Gangulee, A. ”Structure of electroplated and vapordeposited copper films. III. Recrystallization and grain growth.” Journal of Applied Physics 45.9 (1974): 3749-3756.
 double n = 2; 
-double K_ = 74.306; //fitted from Gangulee, A. ”Structure of electroplated and vapordeposited copper films. III. Recrystallization and grain growth.” Journal of Applied Physics 45.9 (1974): 3749-3756.
+double K_ = 94.3; //fitted from Gangulee, A. ”Structure of electroplated and vapordeposited copper films. III. Recrystallization and grain growth.” Journal of Applied Physics 45.9 (1974): 3749-3756.
 double R = 8.314;
 
 
 // grid point dimension
-int dim_x = 50; 
+int dim_x = 300; 
 int dim_y = 50; 
-int dim_z = 30; 
+int dim_z = 700; 
 
-namespace MMSP
-{
-template <int dim> bool OutsideDomainCheck(MMSP::grid<dim, unsigned long>& grid, vector<int>* x);
+namespace MMSP { 
+	template <int dim> bool OutsideDomainCheck(MMSP::grid<dim, unsigned long>& grid, vector<int>* x);
 
-  template <int dim> void UpdateLocalTmp(MMSP::grid<dim, unsigned long>& grid, long int global_tmc, int velInverse, double peakTmp){
-    double plat = dim_x / 10;
-    double range = dim_x / 10;
-   vector<int> coords (dim,0);
-   if(dim==2){
-     for(int codx=x0(grid, 0); codx < x1(grid, 0); codx++) {
-         for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
-           coords[0] = codx;
-           coords[1] = cody;	   
-           int PEAK = /*dim_x / 2 +*/ global_tmc / velInverse; //(dim_x / 2);                                                                                                                                                                                                  
-	   if (codx < PEAK - plat - range) {
-	     grid.AccessToTmp(coords) = 473.0;
-	   } else if (codx < PEAK - plat) {
-	     grid.AccessToTmp(coords) = 523.0 - (523.0 - 473.0) / range * (PEAK - plat - codx);
-	   } else if (codx < PEAK + plat) {
-	     grid.AccessToTmp(coords) = 523.0;
-	   } else if (codx < PEAK + plat + range) {
-	     grid.AccessToTmp(coords) = 523.0 - (523.0 - 473.0) / range * (codx - PEAK - plat);
-	   } else {
-	     grid.AccessToTmp(coords) = 473.0;
+  	template <int dim> void UpdateLocalTmp(MMSP::grid<dim, unsigned long>& grid, long int global_tmc, double velInverse, double maxTemp, double minTemp, double plat, double range){
+	   // double plat = 1;//dim_x / 10;
+	   // double range = 2;//dim_x / 10;
+	   vector<int> coords (dim,0);
+	   if(dim==2){
+	     for(int codx=x0(grid, 0); codx < x1(grid, 0); codx++) {
+	         for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
+	           coords[0] = codx;
+	           coords[1] = cody;	   
+	           //int PEAK = /*dim_x / 2 +*/ global_tmc / velInverse; //(dim_x / 2);   
+	           int PEAK = /*dim_x / 2 +*/  global_tmc / velInverse; //(dim_x / 2);                                                                                                                                                                                                 
+		   if (codx < PEAK - plat - range) {
+		     grid.AccessToTmp(coords) = minTemp;
+		   } else if (codx < PEAK - plat) {
+		     grid.AccessToTmp(coords) = maxTemp - (maxTemp - minTemp) / range * (PEAK - plat - codx);
+		   } else if (codx < PEAK + plat) {
+		     grid.AccessToTmp(coords) = maxTemp;
+		   } else if (codx < PEAK + plat + range) {
+		     grid.AccessToTmp(coords) = maxTemp - (maxTemp - minTemp) / range * (codx - PEAK - plat);
+		   } else {
+		     grid.AccessToTmp(coords) = minTemp;
+		   }
+	           // grid.AccessToTmp(coords) = peakTmp - (peakTmp - 473.0) / (dim_x / 50) * abs(codx - PEAK);//10.0 * sin(1.0*codx / 100 * 2.0 * M_PI);                                                                                                                                 
+	           // grid.AccessToTmp(coords) = grid.AccessToTmp(coords) < 473.0 ? 473.0 : grid.AccessToTmp(coords);
+
+	/*                                                                                                                                                                                                                                                                              
+	if(codx<=0.5*dim_x)                                                                                                                                                                                                                                                             
+	  grid.AccessToTmp(coords) = temp[1];                                                                                                                                                                                                                                           
+	else                                                                                                                                                                                                                                                                            
+	  grid.AccessToTmp(coords) = temp[0];                                                                                                                                                                                                                                           
+	*/
+	         }
+	      }
+		 
+	/*-----------------------
+	if(codx<=0.5*1000)
+	  grid.AccessToTmp(coords) = temp[1]; 
+	else if(0.25*1000<codx<=0.5*1000)
+	  grid.AccessToTmp(coords) = temp[0]; 
+	else if(0.5*1000<codx<=0.75*1000)
+	  grid.AccessToTmp(coords) = 1000; 
+	else if(0.75*1000<codx<=1000)
+	  grid.AccessToTmp(coords) = 700; 
+	-----------------------*/
+	   } else if(dim==3){
+	     for(int codx=x0(grid, 0); codx < x1(grid, 0); codx++)  
+	         for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++) 
+	           for(int codz=x0(grid, 2); codz < x1(grid, 2); codz++){
+	             coords[0] = codx;
+	             coords[1] = cody;
+	             coords[2] = codz;
+	//             grid.AccessToTmp(coords) = 473 + 273.0*sin(3.14/1000*codx + 3.14/(1.0e5)*physical_time);
+	           }
 	   }
-           // grid.AccessToTmp(coords) = peakTmp - (peakTmp - 473.0) / (dim_x / 50) * abs(codx - PEAK);//10.0 * sin(1.0*codx / 100 * 2.0 * M_PI);                                                                                                                                 
-           // grid.AccessToTmp(coords) = grid.AccessToTmp(coords) < 473.0 ? 473.0 : grid.AccessToTmp(coords);
-
-/*                                                                                                                                                                                                                                                                              
-if(codx<=0.5*dim_x)                                                                                                                                                                                                                                                             
-  grid.AccessToTmp(coords) = temp[1];                                                                                                                                                                                                                                           
-else                                                                                                                                                                                                                                                                            
-  grid.AccessToTmp(coords) = temp[0];                                                                                                                                                                                                                                           
-*/
-         }
-      }
-	 
-/*-----------------------
-if(codx<=0.5*1000)
-  grid.AccessToTmp(coords) = temp[1]; 
-else if(0.25*1000<codx<=0.5*1000)
-  grid.AccessToTmp(coords) = temp[0]; 
-else if(0.5*1000<codx<=0.75*1000)
-  grid.AccessToTmp(coords) = 1000; 
-else if(0.75*1000<codx<=1000)
-  grid.AccessToTmp(coords) = 700; 
------------------------*/
-   } else if(dim==3){
-     for(int codx=x0(grid, 0); codx < x1(grid, 0); codx++)  
-         for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++) 
-           for(int codz=x0(grid, 2); codz < x1(grid, 2); codz++){
-             coords[0] = codx;
-             coords[1] = cody;
-             coords[2] = codz;
-//             grid.AccessToTmp(coords) = 473 + 273.0*sin(3.14/1000*codx + 3.14/(1.0e5)*physical_time);
-           }
-   }
-}
+	}
 
 template <int dim>
 unsigned long generate(MMSP::grid<dim,unsigned long >*& grid, int seeds, int nthreads)
@@ -134,7 +136,7 @@ unsigned long generate(MMSP::grid<dim,unsigned long >*& grid, int seeds, int nth
 	unsigned long timer=0;
 	if (dim == 2) {
 		int number_of_fields(seeds);
-		if (number_of_fields==0) number_of_fields = static_cast<int>(float(dim_x*dim_y)/(M_PI*3*3)); /* average grain is a disk of radius XXX
+		if (number_of_fields==0) number_of_fields = static_cast<int>(float(dim_x*dim_y)/(M_PI*0.5*0.5)); /* average grain is a disk of radius XXX
 , XXX cannot be smaller than 0.1, or BGQ will abort.*/
 		#ifdef MPI_VERSION
 		while (number_of_fields % np) --number_of_fields; 
@@ -171,7 +173,7 @@ unsigned long generate(MMSP::grid<dim,unsigned long >*& grid, int seeds, int nth
 		#endif
 	}
 /*------------------Initial tmc----------------------*/
-  double tmc_initial = pow((L_initial/lambda-1)/K1,1.0/n1);
+	double tmc_initial = 0;//pow((L_initial/lambda-1)/K1,1.0/n1);
   vector<int> coords (dim,0);
   if(dim==2){
     for(int codx=x0(*grid, 0); codx < x1(*grid, 0); codx++) 
@@ -212,7 +214,7 @@ unsigned long generate(int dim, char* filename, int seeds, int nthreads)
 
 	unsigned long timer = 0;
 /*------------------Initial tmc----------------------*/
-  double tmc_initial = pow((L_initial/lambda-1)/K1,1.0/n1);
+	double tmc_initial = 0;//pow((L_initial/lambda-1)/K1,1.0/n1);
   vector<int> coords (dim,0);
 /*---------------------------------------------------*/
 
@@ -280,7 +282,7 @@ unsigned long generate(MMSP::grid<dim,unsigned long>*& grid, const char* filenam
 
 	unsigned long timer=0;
 /*------------------Initial tmc----------------------*/
-  double tmc_initial = pow((L_initial/lambda-1)/K1,1.0/n1);
+	double tmc_initial = 0;//pow((L_initial/lambda-1)/K1,1.0/n1);
   vector<int> coords (dim,0);
 /*---------------------------------------------------*/
 
@@ -351,14 +353,10 @@ unsigned long growthexperiment(MMSP::grid<dim,unsigned long >*& grid, const char
 	  exit(-1);
   }
 
-  int z_dim = dim_z;
-  if(dim==2) z_dim = 1;
-
-  unsigned long* ids = new unsigned long[dim_x*dim_y*z_dim];
-
-  unsigned long grainID;
-  unsigned long count = 0;
-  unsigned long fields = 1;
+  int* ids = new int[dim_x*dim_y];
+  int grainID;
+  int count = 0;
+  int fields = 1;
   while(idtxt>>grainID){
     ids[count] = grainID;
     ++count; 
@@ -369,11 +367,11 @@ unsigned long growthexperiment(MMSP::grid<dim,unsigned long >*& grid, const char
 /*----------------------------------------------*/
 
 /*------------------Initial tmc----------------------*/
-  double tmc_initial = 0.01;//pow((L_initial/lambda-1)/K1,1.0/n1);
+  double tmc_initial = 0;//pow((L_initial/lambda-1)/K1,1.0/n1);
   vector<int> coords (dim,0);
 
   if(dim==2){
-    for(int codx=x0(*grid, 0); codx < x1(*grid, 0); codx++){
+    for(int codx=x0(*grid, 0); codx < x1(*grid, 0); codx++) {
       for(int cody=x0(*grid, 1); cody < x1(*grid, 1); cody++){
         coords[0] = codx;
         coords[1] = cody;
@@ -475,7 +473,7 @@ template <int dim> void* flip_index_helper( void* s )
 
     double temperature=(*(ss->grid)).AccessToTmp(x);
     double t_mcs = (*(ss->grid)).AccessToTmc(x);
-    double Pnumerator = exp(-Q/R/temperature)/pow(t_mcs,n1-1)/pow((1+K1*pow(t_mcs,n1)),n-1);
+    double Pnumerator = exp(-Q/R/temperature)/pow( pow(L_initial/lambda, m) + K1 * t_mcs, (double)n/m - 1.0) ; //exp(-Q/R/temperature)/pow(t_mcs,n1-1)/pow((1+K1*pow(t_mcs,n1)),n-1);
     double site_selection_probability = Pnumerator/ss->Pdenominator;
 	  double rd = double(rand())/double(RAND_MAX);
     if(rd>site_selection_probability){
@@ -580,14 +578,25 @@ template <int dim> void* flip_index_helper( void* s )
         }
       }
 			// attempt a spin flip
-			double r = double(rand())/double(RAND_MAX);
-      kT = 1.3806488e-23*273;
-//	      int rank = MPI::COMM_WORLD.Get_rank();
-			if (dE <= 0.0) {
-        (*(ss->grid))(x) = spin2;
-//        if(rank==0 ) {std::cout<<x[0]<<" "<<x[1]<<"  dE is "<<dE<<std::endl;}
+      /*
+      double r = double(rand())/double(RAND_MAX);
+      if (dim == 2) {
+        kT = 0.6634;
+      } else if (dim == 3){
+        kT = 5.58;
       }
-  	  else if (r<exp(-dE/kT)) (*(ss->grid))(x) = spin2;
+      
+      if (dE <= 0.0) {
+        (*(ss->grid))(x) = spin2;
+      }
+      else if (r<exp(-dE/kT)) {
+        (*(ss->grid))(x) = spin2;
+      }
+      */
+      if (dE <= 0.0) {                                                                                                                                                              
+        (*(ss->grid))(x) = spin2;                                                                                                                                                  
+      }                                                                                                                                                                            
+
 		}
 	}
 	pthread_exit(0);
@@ -615,7 +624,7 @@ template <int dim> double PdenominatorMax(MMSP::grid<dim, unsigned long>& grid, 
            coords[1] = cody;
            double temperature = grid.AccessToTmp(coords);
            double tmc_local = grid.AccessToTmc(coords);
-           double Pdenominator = exp(-Q/R/temperature)/pow(tmc_local,n1-1)/pow((1+K1*pow(tmc_local,n1)),n-1);
+           double Pdenominator = exp(-Q/R/temperature)/pow( pow(L_initial/lambda, m) + K1 * tmc_local, (double)n/m - 1.0); //exp(-Q/R/temperature)/pow(tmc_local,n1-1)/pow((1+K1*pow(tmc_local,n1)),n-1);
            if(Pdenominator > Pdenominator_max){
              Pdenominator_max = Pdenominator;
              tmc_at_PdenominatorMax = grid.AccessToTmc(coords);
@@ -632,7 +641,7 @@ template <int dim> double PdenominatorMax(MMSP::grid<dim, unsigned long>& grid, 
            coords[2] = codz;
            double temperature = grid.AccessToTmp(coords);
            double tmc_local = grid.AccessToTmc(coords);
-           double Pdenominator = exp(-Q/R/temperature)/pow(tmc_local,n1-1)/pow((1+K1*pow(tmc_local,n1)),n-1);
+           double Pdenominator = exp(-Q/R/temperature)/pow( pow(L_initial/lambda, m) + K1 * tmc_local, (double)n/m - 1.0); //exp(-Q/R/temperature)/pow(tmc_local,n1-1)/pow((1+K1*pow(tmc_local,n1)),n-1);                                                                   
            if(Pdenominator > Pdenominator_max){
              Pdenominator_max = Pdenominator;
              tmc_at_PdenominatorMax = grid.AccessToTmc(coords);
@@ -651,10 +660,10 @@ template <int dim> void UpdateLocalTmc(MMSP::grid<dim, unsigned long>& grid, dou
            coords[0] = codx;
            coords[1] = cody;
            double tmc_local = grid.AccessToTmc(coords);
-           long double exp_eqn_rhs = pow(lambda*(1+K1*pow(tmc_local, n1)), n) - pow(L0, n);
+           long double exp_eqn_rhs = pow( pow(lambda, m) * K1 * tmc_local + pow(L_initial, m), (double)n/m) - pow(L0, n); //pow(lambda*(1+K1*pow(tmc_local, n1)), n) - pow(L0, n);
            long double temperature = grid.AccessToTmp(coords);
            exp_eqn_rhs += K_*t_inc*exp(-Q/R/temperature);
-           grid.AccessToTmc(coords) = pow(1.0/K1/lambda*pow(exp_eqn_rhs+pow(L0, n),1.0/n)-1.0/K1, 1.0/n1);  
+           grid.AccessToTmc(coords) = (pow(exp_eqn_rhs + pow(L0, n), (double)m/n) - pow(L_initial, m)) / pow(lambda, m) / K1;//pow(1.0/K1/lambda*pow(exp_eqn_rhs+pow(L0, n),1.0/n)-1.0/K1, 1.0/n1);  
          }
    }
    else if(dim==3){
@@ -665,15 +674,43 @@ template <int dim> void UpdateLocalTmc(MMSP::grid<dim, unsigned long>& grid, dou
              coords[1] = cody;
              coords[2] = codz;
              double tmc_local = grid.AccessToTmc(coords);
-             long double exp_eqn_rhs = pow(lambda*(1+K1*pow(tmc_local, n1)), n) - pow(L0, n);
+             long double exp_eqn_rhs = pow( pow(lambda, m) * K1 * tmc_local + pow(L_initial, m), (double)n/m) - pow(L0, n); //pow(lambda*(1+K1*pow(tmc_local, n1)), n) - pow(L0, n);
              long double temperature = grid.AccessToTmp(coords);
              exp_eqn_rhs += K_*t_inc*exp(-Q/R/temperature);
-             grid.AccessToTmc(coords) = pow(1.0/K1/lambda*pow(exp_eqn_rhs+pow(L0, n),1.0/n)-1.0/K1, 1.0/n1);  
+             grid.AccessToTmc(coords) = (pow(exp_eqn_rhs + pow(L0, n), (double)m/n) - pow(L_initial, m)) / pow(lambda, m) / K1;//pow(1.0/K1/lambda*pow(exp_eqn_rhs+pow(L0, n),1.0/n)-1.0/K1, 1.0/n1);  
            }
    }
 }
 
-template <int dim> void calCulateGrainSize(MMSP::grid<dim, unsigned long>& grid, unsigned long &number_of_grains){
+template <int dim> void calCulateGrainSizeAlongX(MMSP::grid<dim, unsigned long>& grid, unsigned long &number_of_grains){
+   vector<int> coords (dim,0);
+   if(dim==2){
+   	  int midy = (g0(grid, 1) + g1(grid, 1) / 2);
+	  if(midy >= x0(grid, 1) && midy < x1(grid, 1)){
+		unsigned long index_record = -1;
+		for(int codx = x0(grid, 0); codx < x1(grid, 0); codx++) {
+			coords[0] = codx;
+			coords[1] = midy;
+			if(grid(coords) != index_record) {
+				index_record = grid(coords);
+				number_of_grains++;
+			}
+		} 
+		if(x1(grid, 0) < g1(grid, 0)) {
+			coords[0] = x1(grid, 0);
+			if(grid(coords) == index_record && number_of_grains != 0) {
+				number_of_grains--;
+			}
+		}
+	  }
+   }
+   else if(dim==3){
+   		std::cerr << "to do 3D case" << std::endl;
+   }
+}
+
+
+template <int dim> void calCulateGrainSizeAlongY(MMSP::grid<dim, unsigned long>& grid, unsigned long &number_of_grains){
    vector<int> coords (dim,0);
    if(dim==2){
       int midx = (g0(grid, 0)+g1(grid, 0))/2;
@@ -686,114 +723,23 @@ template <int dim> void calCulateGrainSize(MMSP::grid<dim, unsigned long>& grid,
           coords[1] = cody;
           if(grid(coords)!=index_record){
             index_record = grid(coords);
-            number_of_grains = number_of_grains + 1;       
+            number_of_grains = number_of_grains + 1;
           }
         }
         if(x1(grid, 1) < g1(grid, 1)){
           coords[1] = x1(grid, 1);
           if(grid(coords) == index_record && number_of_grains != 0){
-            number_of_grains = number_of_grains - 1; 
+            number_of_grains = number_of_grains - 1;
           }
         }
       }
-      
    }
    else if(dim==3){
-      int midx = (g0(grid, 0)+g1(grid, 0))/2;
-      int midy = (g0(grid, 1)+g1(grid, 1))/2;
-      int midz = (g0(grid, 2)+g1(grid, 2))/2;
-      if(midx>=x0(grid, 0) && midx<x1(grid, 0) && midz>=x0(grid, 2) && midz<x1(grid, 2)){
-        unsigned long index_record = -1;
-        for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
-          coords[0] = midx;
-          coords[1] = cody;
-          coords[2] = midz;
-          if(grid(coords)!=index_record){
-            index_record = grid(coords);
-            number_of_grains = number_of_grains + 1;       
-          }
-        }
-        if(x1(grid, 1) < g1(grid, 1)){
-          coords[1] = x1(grid, 1);
-          if(grid(coords) == index_record && number_of_grains != 0){
-            number_of_grains = number_of_grains - 1; 
-          }
-        }
-      }
-      if(0.25*midx>=x0(grid, 0) && 0.25*midx<x1(grid, 0) && 0.25*midz>=x0(grid, 2) && 0.25*midz<x1(grid, 2)){
-        unsigned long index_record = -1;
-        for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
-          coords[0] = 0.25*midx;
-          coords[1] = cody;
-          coords[2] = 0.25*midz;
-          if(grid(coords)!=index_record){
-            index_record = grid(coords);
-            number_of_grains = number_of_grains + 1;       
-          }
-        }
-        if(x1(grid, 1) < g1(grid, 1)){
-          coords[1] = x1(grid, 1);
-          if(grid(coords) == index_record && number_of_grains != 0){
-            number_of_grains = number_of_grains - 1; 
-          }
-        }
-      }
-      if(0.75*midx>=x0(grid, 0) && 0.75*midx<x1(grid, 0) && 0.75*midz>=x0(grid, 2) && 0.75*midz<x1(grid, 2)){
-        unsigned long index_record = -1;
-        for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
-          coords[0] = 0.75*midx;
-          coords[1] = cody;
-          coords[2] = 0.75*midz;
-          if(grid(coords)!=index_record){
-            index_record = grid(coords);
-            number_of_grains = number_of_grains + 1;       
-          }
-        }
-        if(x1(grid, 1) < g1(grid, 1)){
-          coords[1] = x1(grid, 1);
-          if(grid(coords) == index_record && number_of_grains != 0){
-            number_of_grains = number_of_grains - 1; 
-          }
-        }
-      }
-      if(0.75*midx>=x0(grid, 0) && 0.75*midx<x1(grid, 0) && 0.25*midz>=x0(grid, 2) && 0.25*midz<x1(grid, 2)){
-        unsigned long index_record = -1;
-        for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
-          coords[0] = 0.75*midx;
-          coords[1] = cody;
-          coords[2] = 0.25*midz;
-          if(grid(coords)!=index_record){
-            index_record = grid(coords);
-            number_of_grains = number_of_grains + 1;       
-          }
-        }
-        if(x1(grid, 1) < g1(grid, 1)){
-          coords[1] = x1(grid, 1);
-          if(grid(coords) == index_record && number_of_grains != 0){
-            number_of_grains = number_of_grains - 1; 
-          }
-        }
-      }
-      if(0.25*midx>=x0(grid, 0) && 0.25*midx<x1(grid, 0) && 0.75*midz>=x0(grid, 2) && 0.75*midz<x1(grid, 2)){
-        unsigned long index_record = -1;
-        for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
-          coords[0] = 0.25*midx;
-          coords[1] = cody;
-          coords[2] = 0.75*midz;
-          if(grid(coords)!=index_record){
-            index_record = grid(coords);
-            number_of_grains = number_of_grains + 1;       
-          }
-        }
-        if(x1(grid, 1) < g1(grid, 1)){
-          coords[1] = x1(grid, 1);
-          if(grid(coords) == index_record && number_of_grains != 0){
-            number_of_grains = number_of_grains - 1; 
-          }
-        }
-      }
+   		std::cerr << "to do 3D case" << std::endl;
    }
+
 }
+
 
 template <int dim> void calCulateGrainSize1(MMSP::grid<dim, unsigned long>& grid, unsigned long &number_of_grains){
    vector<int> coords (dim,0);
@@ -977,7 +923,7 @@ template <int dim> void calCulateGrainSize2(MMSP::grid<dim, unsigned long>& grid
    }
 }
 
-template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, int steps, long int steps_finished, int nthreads, int step_to_nonuniform, long double &physical_time, int velInverse, double peakTmp) {
+template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, int steps, long int steps_finished, int nthreads, int step_to_nonuniform, long double &physical_time, double velInverse, double maxTemp, double minTemp, double plat, double range) {
 	#if (!defined MPI_VERSION) && ((defined CCNI) || (defined BGQ))
 	std::cerr<<"Error: MPI is required for CCNI."<<std::endl;
 	exit(1);
@@ -1188,7 +1134,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 
 	for (int step=0; step<steps; step++){
 	  if (steps_finished + step == 0) {
-	    UpdateLocalTmp(grid, steps_finished + step, velInverse, peakTmp);
+	    UpdateLocalTmp(grid, steps_finished + step, velInverse, maxTemp, minTemp, plat, range);
 	  }
 
     double tmc_at_PdenominatorMax = 0.0;
@@ -1211,10 +1157,10 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
     MPI::COMM_WORLD.Allreduce(&tmp_at_PdenominatorMax, &tmp_at_PdenominatorMax_global, 1, MPI_DOUBLE, MPI_MAX);
     MPI::COMM_WORLD.Barrier();
 
-    double t_inc = (pow(lambda*(1+K1*pow(tmc_at_PdenominatorMax_global+1, n1)), n) - 
-                     pow(lambda*(1+K1*pow(tmc_at_PdenominatorMax_global, n1)), n) )/K_/exp(-Q/R/tmp_at_PdenominatorMax_global);
+    double t_inc = (pow(pow(lambda, m) * K1 * (tmc_at_PdenominatorMax_global + 1) + pow(L_initial, m), (double)n/m) - pow(pow(lambda, m) * K1 * tmc_at_PdenominatorMax_global + pow(L_initial, m), (double)n/m)) / K_/exp(-Q/R/tmp_at_PdenominatorMax_global); //(pow(lambda*(1+K1*pow(tmc_at_PdenominatorMax_global+1, n1)), n) - 
+      // pow(lambda*(1+K1*pow(tmc_at_PdenominatorMax_global, n1)), n) )/K_/exp(-Q/R/tmp_at_PdenominatorMax_global);
 
-		unsigned long start = rdtsc();
+	unsigned long start = rdtsc();
     int num_of_sublattices=0;
     if(dim==2) num_of_sublattices = 4; 
     else if(dim==3) num_of_sublattices = 8;
@@ -1247,18 +1193,48 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 	  MPI::COMM_WORLD.Barrier();
     UpdateLocalTmc(grid, t_inc);
 	  MPI::COMM_WORLD.Barrier();
-    UpdateLocalTmp(grid, steps_finished + step, velInverse, peakTmp);
+    UpdateLocalTmp(grid, steps_finished + step, velInverse, maxTemp, minTemp, plat, range);
 	  MPI::COMM_WORLD.Barrier();
 
-    unsigned long number_of_grains = 0;
-    calCulateGrainSize(grid, number_of_grains);
-    unsigned long total_number_of_grains = 0;
-	  MPI::COMM_WORLD.Allreduce(&number_of_grains, &total_number_of_grains, 1, MPI_UNSIGNED_LONG, MPI_SUM);
-	  MPI::COMM_WORLD.Barrier();
-    double grain_size = 1.0*dim_y/total_number_of_grains;
+	// when the scan reach the end of x direction:
 
-if(rank==0)
-    std::cout<< "physical_time is "<<physical_time<< " grain_size "<<grain_size<<std::endl;
+	//if(rank==0)
+	//    std::cout<< (int)((1 + steps_finished + step) / velInverse) << "  " << dim_x << std::endl;
+	if((int)((1 + steps_finished + step) / velInverse) == dim_x) {
+		unsigned long number_of_grains = 0;
+		calCulateGrainSizeAlongY(grid, number_of_grains);
+		unsigned long total_number_of_grains = 0;
+		MPI::COMM_WORLD.Allreduce(&number_of_grains, &total_number_of_grains, 1, MPI_UNSIGNED_LONG, MPI_SUM);
+		MPI::COMM_WORLD.Barrier();
+		double grain_size_along_y = 1.0*dim_y/total_number_of_grains;
+		MPI::COMM_WORLD.Barrier();
+
+		number_of_grains = 0;
+		calCulateGrainSizeAlongX(grid, number_of_grains);
+		total_number_of_grains = 0;
+		MPI::COMM_WORLD.Allreduce(&number_of_grains, &total_number_of_grains, 1, MPI_UNSIGNED_LONG, MPI_SUM);
+		MPI::COMM_WORLD.Barrier();
+		double grain_size_along_x = 1.0*dim_x/total_number_of_grains;
+
+		if(rank==0) {
+			std::ofstream ofs;
+			ofs.open ("data.txt", std::ofstream::out | std::ofstream::app);		
+			//std::cout << grain_size_along_x << "   " << grain_size_along_y << std::endl;
+			ofs << velInverse << "  " << maxTemp << "  " << minTemp << "  " << plat << "  " << range;
+			if(grain_size_along_x > 2 * grain_size_along_y) {
+				// output true
+				ofs << "  1\n";
+			} else {
+				ofs << "  0\n";
+			}
+			ofs.close();
+		}
+	}
+
+/*
+	if(rank==0)
+	    std::cout<< "physical_time is "<<physical_time<< " grain_size "<<grain_size<<std::endl;
+*/
 		update_timer += rdtsc()-start;
 	}//loop over step
 
