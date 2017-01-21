@@ -1218,7 +1218,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 
 		if(rank==0) {
 			std::ofstream ofs;
-			ofs.open ("data.txt", std::ofstream::out | std::ofstream::app);		
+			ofs.open ("/home/smartcoder/Documents/Code/MS/data.txt", std::ofstream::out | std::ofstream::app);		
 			//std::cout << grain_size_along_x << "   " << grain_size_along_y << std::endl;
 			ofs << velInverse << "  " << maxTemp << "  " << minTemp << "  " << plat << "  " << range;
 			if(grain_size_along_x > 2 * grain_size_along_y) {
