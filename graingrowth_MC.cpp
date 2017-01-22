@@ -481,8 +481,8 @@ template <int dim> void* flip_index_helper( void* s )
       continue;//this site wont be selected
     }
 
-		unsigned long spin1 = (*(ss->grid))(x);
-		// determine neighboring spins
+	unsigned long spin1 = (*(ss->grid))(x);
+	// determine neighboring spins
     vector<int> r(dim,0);
     std::vector<unsigned long> neighbors;
     neighbors.clear();
@@ -1218,9 +1218,10 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 
 		if(rank==0) {
 			std::ofstream ofs;
-			ofs.open ("/home/smartcoder/Documents/Code/MS/data.txt", std::ofstream::out | std::ofstream::app);		
+			string mid = to_string(velInverse) + "_" + to_string(maxTemp) + "_" + to_string(minTemp) + "_" + to_string(plat) + "_" + to_string(range); 
+			ofs.open("/home/smartcoder/Documents/Code/MS/" + mid + ".txt", std::ofstream::out);		
 			//std::cout << grain_size_along_x << "   " << grain_size_along_y << std::endl;
-			ofs << velInverse << "  " << maxTemp << "  " << minTemp << "  " << plat << "  " << range;
+			ofs << velInverse << "," << maxTemp << "," << minTemp << "," << plat << "," << range;
 			if(grain_size_along_x > 2 * grain_size_along_y) {
 				// output true
 				ofs << "  1\n";
