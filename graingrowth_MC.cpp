@@ -924,6 +924,8 @@ template <int dim> void calCulateGrainSize2(MMSP::grid<dim, unsigned long>& grid
 }
 
 template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, int steps, long int steps_finished, int nthreads, int step_to_nonuniform, long double &physical_time, double velInverse, double maxTemp, double minTemp, double plat, double range) {
+	unsigned long start = rdtsc();
+	
 	#if (!defined MPI_VERSION) && ((defined CCNI) || (defined BGQ))
 	std::cerr<<"Error: MPI is required for CCNI."<<std::endl;
 	exit(1);
@@ -1160,7 +1162,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
     double t_inc = (pow(pow(lambda, m) * K1 * (tmc_at_PdenominatorMax_global + 1) + pow(L_initial, m), (double)n/m) - pow(pow(lambda, m) * K1 * tmc_at_PdenominatorMax_global + pow(L_initial, m), (double)n/m)) / K_/exp(-Q/R/tmp_at_PdenominatorMax_global); //(pow(lambda*(1+K1*pow(tmc_at_PdenominatorMax_global+1, n1)), n) - 
       // pow(lambda*(1+K1*pow(tmc_at_PdenominatorMax_global, n1)), n) )/K_/exp(-Q/R/tmp_at_PdenominatorMax_global);
 
-	unsigned long start = rdtsc();
+	
     int num_of_sublattices=0;
     if(dim==2) num_of_sublattices = 4; 
     else if(dim==3) num_of_sublattices = 8;
@@ -1219,7 +1221,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 		if(rank==0) {
 			std::ofstream ofs;
 			string mid = to_string(velInverse) + "_" + to_string(maxTemp) + "_" + to_string(minTemp) + "_" + to_string(plat) + "_" + to_string(range); 
-			ofs.open("/home/smartcoder/Documents/Code/MS/" + mid + ".txt", std::ofstream::out);		
+			ofs.open("/gpfs/u/home/ACME/ACMEtany/scratch/MSthesis/" + mid + ".txt", std::ofstream::out);		
 			//std::cout << grain_size_along_x << "   " << grain_size_along_y << std::endl;
 			ofs << velInverse << "," << maxTemp << "," << minTemp << "," << plat << "," << range;
 			if(grain_size_along_x > 2 * grain_size_along_y) {
