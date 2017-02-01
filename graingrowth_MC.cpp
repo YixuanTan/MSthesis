@@ -925,7 +925,7 @@ template <int dim> void calCulateGrainSize2(MMSP::grid<dim, unsigned long>& grid
 
 template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, int steps, long int steps_finished, int nthreads, int step_to_nonuniform, long double &physical_time, double velInverse, double maxTemp, double minTemp, double plat, double range) {
 	unsigned long start = rdtsc();
-	
+
 	#if (!defined MPI_VERSION) && ((defined CCNI) || (defined BGQ))
 	std::cerr<<"Error: MPI is required for CCNI."<<std::endl;
 	exit(1);
@@ -1220,7 +1220,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 
 		if(rank==0) {
 			std::ofstream ofs;
-			string mid = to_string(velInverse) + "_" + to_string(maxTemp) + "_" + to_string(minTemp) + "_" + to_string(plat) + "_" + to_string(range); 
+			std::string mid = std::to_string(velInverse) + "_" + std::to_string(maxTemp) + "_" + std::to_string(minTemp) + "_" + std::to_string(plat) + "_" + std::to_string(range); 
 			ofs.open("/gpfs/u/home/ACME/ACMEtany/scratch/MSthesis/" + mid + ".txt", std::ofstream::out);		
 			//std::cout << grain_size_along_x << "   " << grain_size_along_y << std::endl;
 			ofs << velInverse << "," << maxTemp << "," << minTemp << "," << plat << "," << range;
