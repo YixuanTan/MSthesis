@@ -43,10 +43,10 @@ parallelmc: main.cpp graingrowth_MC.cpp tessellate.hpp $(core)
 	$(pcompiler) $(flags) -include mpi.h $< -o parallel_MC.out -lz -lpthread
 
 bgq: main.cpp graingrowth.cpp tessellate.hpp $(core)
-	$(qcompiler) $(qflags) -DBGQ -DSILENT -DPHASEFIELD -DRAW $< -o q_GG.out
+	$(qcompiler) $(qflags) -DBGQ -DPHASEFIELD -DRAW $< -o q_GG.out
 
 bgqmc: main.cpp graingrowth_MC.cpp tessellate.hpp $(core)
-	$(qcompiler) $(qflags) -DBGQ -DSILENT -DRAW $< -o q_MC.out
+	$(qcompiler) $(qflags) -DBGQ -DRAW $< -o q_MC.out
 
 wrongendian: wrongendian.cpp
 	$(compiler) $< -o $@.out -lz -pthread

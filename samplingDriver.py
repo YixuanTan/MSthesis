@@ -39,7 +39,7 @@ for numOfNode in nodesOption:
         file = header 
         f = open('runjob.sh', 'w', 1) # 3rd argv is the bufsize, 1 means line buffered
         
-        file = file + 'srun /gpfs/u/home/ACME/ACMEtany/scratch/MSscale/MSthesis/q_MC.out --nonstop 2 voronmc.0000.dat 100 100 0 ' + str(nthread) + ' 1 723 723 1 1' 
+        file = file + 'srun /gpfs/u/home/ACME/ACMEtany/scratch/MSscale/MSthesis/q_MC.out --nonstop 2 voronmc.0000.dat 1000 1000 0 ' + str(nthread) + ' 1 723 723 1 1' 
         f.write(file) 
         f.close() 
         os.system('sbatch runjob.sh')

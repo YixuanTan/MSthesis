@@ -32,6 +32,7 @@
 #include"MMSP.hpp"
 #include"tessellate.hpp"
 #include"output.cpp"
+#include <string> 
 
 /* ------- Al-Cu alloy film
 double lambda = 3.75e-3; //This is fixed from Monte Carlo simulation, so do not change it.  here 10 um is the domain size, so each pixel is 10 nm, all length unit should be with um.
@@ -59,8 +60,8 @@ double R = 8.314;
 
 
 // grid point dimension
-int dim_x = 300; 
-int dim_y = 50; 
+int dim_x = 2000; 
+int dim_y = 2000; 
 int dim_z = 700; 
 
 namespace MMSP { 
@@ -136,7 +137,7 @@ unsigned long generate(MMSP::grid<dim,unsigned long >*& grid, int seeds, int nth
 	unsigned long timer=0;
 	if (dim == 2) {
 		int number_of_fields(seeds);
-		if (number_of_fields==0) number_of_fields = static_cast<int>(float(dim_x*dim_y)/(M_PI*0.5*0.5)); /* average grain is a disk of radius XXX
+		if (number_of_fields==0) number_of_fields = static_cast<int>(float(dim_x*dim_y)/(M_PI*5*5)); /* average grain is a disk of radius XXX
 , XXX cannot be smaller than 0.1, or BGQ will abort.*/
 		#ifdef MPI_VERSION
 		while (number_of_fields % np) --number_of_fields; 
@@ -1202,6 +1203,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 
 	//if(rank==0)
 	//    std::cout<< (int)((1 + steps_finished + step) / velInverse) << "  " << dim_x << std::endl;
+	  /*
 	if((int)((1 + steps_finished + step) / velInverse) == dim_x) {
 		unsigned long number_of_grains = 0;
 		calCulateGrainSizeAlongY(grid, number_of_grains);
@@ -1217,10 +1219,11 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 		MPI::COMM_WORLD.Allreduce(&number_of_grains, &total_number_of_grains, 1, MPI_UNSIGNED_LONG, MPI_SUM);
 		MPI::COMM_WORLD.Barrier();
 		double grain_size_along_x = 1.0*dim_x/total_number_of_grains;
-
+		
 		if(rank==0) {
 			std::ofstream ofs;
-			string mid = to_string(velInverse) + "_" + to_string(maxTemp) + "_" + to_string(minTemp) + "_" + to_string(plat) + "_" + to_string(range); 
+			std::string mid = std::to_string(velInverse) + "_" + std::to_string(maxTemp) + "_" + std::to_string(minTemp) + "_" + std::to_string(plat) + "_" + std::to_string(range); 
+
 			ofs.open("/gpfs/u/home/ACME/ACMEtany/scratch/MSthesis/" + mid + ".txt", std::ofstream::out);		
 			//std::cout << grain_size_along_x << "   " << grain_size_along_y << std::endl;
 			ofs << velInverse << "," << maxTemp << "," << minTemp << "," << plat << "," << range;
@@ -1232,8 +1235,9 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			}
 			ofs.close();
 		}
+	       
 	}
-
+	*/
 /*
 	if(rank==0)
 	    std::cout<< "physical_time is "<<physical_time<< " grain_size "<<grain_size<<std::endl;
