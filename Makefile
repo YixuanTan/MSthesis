@@ -1,6 +1,4 @@
 # Makefile
-# GNU Makefile for Voronoi tessellation and sparse phase-field grain growth
-# Questions/comments to kellet@rpi.edu (Trevor Keller)
 
 # includes
 incdir = include

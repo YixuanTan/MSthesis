@@ -464,7 +464,7 @@ allbwsum += allbw;
 
 			  comp_cycles = MMSP::update(*grid, increment, increment_finished, nthreads, step_to_nonuniform, physical_time, velInverse, maxTemp, minTemp, plat, range);
         
-        increment_finished += increment;
+        		increment_finished += increment;
 				unsigned long allcomp = 0;
 				#ifdef MPI_VERSION
 				MPI_Reduce(&comp_cycles, &allcomp, 1, MPI_DOUBLE, MPI_SUM, 0, MPI::COMM_WORLD);
