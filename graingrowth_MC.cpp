@@ -1,3 +1,4 @@
+//mpirun -n 4 ./parallel_MC.out --nonstop 2 voronmc.000.dat 600 600 0 4 2 704 489 4 3
 // graingrowth.hpp
 // Algorithms for 2D and 3D isotropic Monte Carlo grain growth
 // Questions/comments to yixuan.john.tan@gmail.com (Yixuan Tan)
@@ -434,7 +435,7 @@ template <int dim> void* flip_index_helper( void* s )
     int cell_numbering_in_thread = rand()%(ss->num_of_cells_in_thread); //choose a cell to flip, from 0 to num_of_cells_in_thread-1
     if(dim==2){
       cell_coords_selected[dim-1]=((ss->cell_coord)[dim-1]+cell_numbering_in_thread)%(ss->lattice_cells_each_dimension)[dim-1];//1-indexed
-      cell_coords_selected[0]=(ss->cell_coord)[0]+(((ss->cell_coord)[dim-1]+cell_numbering_in_thread)/(ss->lattice_cells_each_dimension)[dim-1]);
+`      cell_coords_selected[0]=(ss->cell_coord)[0]+(((ss->cell_coord)[dim-1]+cell_numbering_in_thread)/(ss->lattice_cells_each_dimension)[dim-1]);
     }else if(dim==3){
       cell_coords_selected[dim-1]=((ss->cell_coord)[dim-1]+cell_numbering_in_thread)%(ss->lattice_cells_each_dimension)[dim-1];//1-indexed
       cell_coords_selected[1]=(  (ss->cell_coord)[1]+ ((ss->cell_coord)[dim-1]+cell_numbering_in_thread)/(ss->lattice_cells_each_dimension)[dim-1]  )%(ss->lattice_cells_each_dimension)[1];
