@@ -1,4 +1,5 @@
 //mpirun -n 4 ./parallel_MC.out --nonstop 2 voronmc.000.dat 600 600 0 4 2 704 489 4 3
+//8,472,302,3,1,1
 // graingrowth.hpp
 // Algorithms for 2D and 3D isotropic Monte Carlo grain growth
 // Questions/comments to yixuan.john.tan@gmail.com (Yixuan Tan)
@@ -60,8 +61,8 @@ double R = 8.314;
 
 
 // grid point dimension
-int dim_x = 300; 
-int dim_y = 50; 
+int dim_x = 500; 
+int dim_y = 500; 
 int dim_z = 700; 
 
 namespace MMSP { 
@@ -78,11 +79,11 @@ namespace MMSP {
 	           coords[1] = cody;	   
 	           //int PEAK = /*dim_x / 2 +*/ global_tmc / velInverse; //(dim_x / 2);   
 	           int PEAK = /*dim_x / 2 +*/  global_tmc / velInverse; //(dim_x / 2);                                                                                                                                                                                                 
-		   if (codx < PEAK - plat - range) {
+		   /*if (codx < PEAK - plat - range) {
 		     grid.AccessToTmp(coords) = minTemp;
 		   } else if (codx < PEAK - plat) {
 		     grid.AccessToTmp(coords) = maxTemp - (maxTemp - minTemp) / range * (PEAK - plat - codx);
-		   } else if (codx < PEAK + plat) {
+		   } else */if (codx < PEAK + plat) {
 		     grid.AccessToTmp(coords) = maxTemp;
 		   } else if (codx < PEAK + plat + range) {
 		     grid.AccessToTmp(coords) = maxTemp - (maxTemp - minTemp) / range * (codx - PEAK - plat);
@@ -435,7 +436,7 @@ template <int dim> void* flip_index_helper( void* s )
     int cell_numbering_in_thread = rand()%(ss->num_of_cells_in_thread); //choose a cell to flip, from 0 to num_of_cells_in_thread-1
     if(dim==2){
       cell_coords_selected[dim-1]=((ss->cell_coord)[dim-1]+cell_numbering_in_thread)%(ss->lattice_cells_each_dimension)[dim-1];//1-indexed
-`      cell_coords_selected[0]=(ss->cell_coord)[0]+(((ss->cell_coord)[dim-1]+cell_numbering_in_thread)/(ss->lattice_cells_each_dimension)[dim-1]);
+      cell_coords_selected[0]=(ss->cell_coord)[0]+(((ss->cell_coord)[dim-1]+cell_numbering_in_thread)/(ss->lattice_cells_each_dimension)[dim-1]);
     }else if(dim==3){
       cell_coords_selected[dim-1]=((ss->cell_coord)[dim-1]+cell_numbering_in_thread)%(ss->lattice_cells_each_dimension)[dim-1];//1-indexed
       cell_coords_selected[1]=(  (ss->cell_coord)[1]+ ((ss->cell_coord)[dim-1]+cell_numbering_in_thread)/(ss->lattice_cells_each_dimension)[dim-1]  )%(ss->lattice_cells_each_dimension)[1];
