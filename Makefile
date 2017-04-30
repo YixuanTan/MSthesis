@@ -11,7 +11,7 @@ BG_LIB = -L$(BG_PATH)/lib
 
 # compilers/flags
 compiler = g++ -O3 -Wall
-pcompiler = mpic++ -O3 -Wall -std=c++0x
+pcompiler = mpic++ -O3 -Wall -std=c++0x 
 flags = -I$(incdir) -I$(algodir) -I$(algodir)/topology
 
 # RPI CCI AMOS compilers/flags
