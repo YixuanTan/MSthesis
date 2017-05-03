@@ -62,7 +62,7 @@ double R = 8.314;
 
 // grid point dimension
 int dim_x = 500; 
-int dim_y = 500; 
+int dim_y = 200; 
 int dim_z = 700; 
 
 namespace MMSP { 
@@ -138,7 +138,7 @@ unsigned long generate(MMSP::grid<dim,unsigned long >*& grid, int seeds, int nth
 	unsigned long timer=0;
 	if (dim == 2) {
 		int number_of_fields(seeds);
-		if (number_of_fields==0) number_of_fields = static_cast<int>(float(dim_x*dim_y)/(M_PI*0.5*0.5)); /* average grain is a disk of radius XXX
+		if (number_of_fields==0) number_of_fields = static_cast<int>(float(dim_x*dim_y)/(M_PI*.5*.5)); /* average grain is a disk of radius XXX
 , XXX cannot be smaller than 0.1, or BGQ will abort.*/
 		#ifdef MPI_VERSION
 		while (number_of_fields % np) --number_of_fields; 
@@ -684,8 +684,7 @@ template <int dim> void UpdateLocalTmc(MMSP::grid<dim, unsigned long>& grid, dou
    }
 }
 
-template <int dim> void calculateGrainSizeDist(MMSP::grid<dim, unsigned long>& grid, unsigned long grains_along_line[]){
-	int grid_size = 500;
+template <int dim> void calculateGrainSizeDist(MMSP::grid<dim, unsigned long>& grid, int grains_along_line[]){
 	int lowbound = x0(grid, 1), upbound = x1(grid, 1);
 	for(int codx = x0(grid, 0); codx < x1(grid, 0); codx++) { // x direction is where temperature varies
 		grains_along_line[codx] = 0;
@@ -994,15 +993,40 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 	  MPI::COMM_WORLD.Barrier();
 
 
-	unsigned long grains_along_line[dim_x] = {0};
-	unsigned long grains_along_line_global[dim_x] = {0};
+	int grains_along_line[dim_x] = {0};
+	int grains_along_line_global[dim_x] = {0};
 	calculateGrainSizeDist(grid, grains_along_line);
+
+	/*
+	for(int i = 0; i < 4; i++) {
+		MPI::COMM_WORLD.Barrier();
+		if(rank == i) {
+			for(int i = 0; i < dim_x; i++) std::cout << 	grains_along_line[i] << " ";
+			std::cout << std::endl;
+		}
+		MPI::COMM_WORLD.Barrier();
+	}
+	*/
+
     MPI_Reduce(grains_along_line, grains_along_line_global, dim_x, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-    if(rank==0) {
+
+	if(rank==0) {
+		std::ofstream ofs;
+		ofs.open("size_history.txt", std::ofstream::out | std::ofstream::app);		
+		for(int i = 0; i < dim_x; i++) {
+			ofs << grains_along_line_global[i] << " ";
+		}
+		ofs << "\n";
+		ofs.close();
+	}
+
+    /*
+    if(rank == 0) {
     	for(int i = 0; i < dim_x; i++) {
-    		std::cout << "pos: " << i << "  #grains: " << grains_along_line[i] << std::endl;
+    		std::cout << "pos: " << i << "  #grains: " << grains_along_line_global[i] << std::endl;
     	}
     }
+    */
 
 
 
