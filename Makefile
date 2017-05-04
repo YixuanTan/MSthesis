@@ -10,7 +10,8 @@ BG_INC = -I$(BG_PATH)/include
 BG_LIB = -L$(BG_PATH)/lib
 
 # compilers/flags
-compiler = g++ -O3 -Wall
+#compiler = g++ -O3 -Wall
+compiler = g++ -O3 -w
 pcompiler = mpic++ -O3 -Wall -std=c++0x 
 flags = -I$(incdir) -I$(algodir) -I$(algodir)/topology
 
@@ -60,6 +61,9 @@ mmsp2vtikeeporder: mmsp2vti_keeporder.cpp $(core)
 
 mmsp2vti200orient: mmsp2vti_200orient.cpp $(core)
 	$(compiler) $(flags) $< -o $@ -lz
+
+mmsp2png: mmsp2png.cpp $(core)
+	$(compiler) $(flags) $< -o $@ -lz -lpng
 
 clean:
 	rm -rf graingrowth.out parallel_GG.out parallel_MC.out q_GG.out q_MC.out wrongendian.out
