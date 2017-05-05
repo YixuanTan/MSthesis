@@ -250,10 +250,13 @@ int main(int argc, char* argv[])
 	if (pngindex==0) {
 		std::string datname(argv[datindex]);
 		int extpos = datname.find_last_of(".");
+		/*
 		if (datname.find_first_of("0123456789",extpos) != std::string::npos)
 			pngname << datname << ".png";
 		else
 			pngname << datname.substr(0, extpos) << ".png";
+		*/
+		pngname << "image.png";
 	} else
 		pngname << argv[pngindex];
 
