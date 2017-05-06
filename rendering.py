@@ -12,7 +12,7 @@ plt.ion()
 notifier = inotify.adapters.Inotify()
 notifier.add_watch('/home/smartcoder/Documents/Code/MS/ColumnarGrowth/')
 imgname = ""
-fig = plt.figure()
+#fig = plt.figure()
 
 def plot_cont():    
     def update(i):
@@ -31,9 +31,9 @@ for event in notifier.event_gen():
 		    imgname = event[3]
 		    #time.sleep(0.1)
 		    response = subprocess.check_output("./mmsp2png " + imgname, shell=True, stderr=subprocess.STDOUT)
-		    print response
-		    plot_cont()
-		    #subprocess.check_call("rm *.dat *.png", shell=True)
+		    #print response
+		    #plot_cont()
+		    #subprocess.check_call("rm *.dat", shell=True)
 
 
 
