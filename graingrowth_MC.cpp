@@ -35,6 +35,9 @@
 #include"tessellate.hpp"
 #include"output.cpp"
 
+int grad_pos_start = 0;
+int grad_pos_end = 10;
+
 /* ------- Al-Cu alloy film
 double lambda = 3.75e-3; //This is fixed from Monte Carlo simulation, so do not change it.  here 10 um is the domain size, so each pixel is 10 nm, all length unit should be with um.
 double L_initial = 30.0e-3; // initially 30 nm diameter
@@ -59,7 +62,6 @@ double n = 2;
 double K_ = 94.3; //fitted from Gangulee, A. ”Structure of electroplated and vapordeposited copper films. III. Recrystallization and grain growth.” Journal of Applied Physics 45.9 (1974): 3749-3756.
 double R = 8.314;
 
-
 // grid point dimension
 int dim_x = 500; 
 int dim_y = 200; 
@@ -73,34 +75,18 @@ namespace MMSP {
 	   // double range = 2;//dim_x / 10;
 	   vector<int> coords (dim,0);
 	   if(dim==2){
-	     for(int codx=x0(grid, 0); codx < x1(grid, 0); codx++) {
-	         for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
-	           coords[0] = codx;
-	           coords[1] = cody;	   
-	           //int PEAK = /*dim_x / 2 +*/ global_tmc / velInverse; //(dim_x / 2);   
-	           int PEAK = /*dim_x / 2 +*/  global_tmc / velInverse; //(dim_x / 2);                                                                                                                                                                                                 
-		   /*if (codx < PEAK - plat - range) {
-		     grid.AccessToTmp(coords) = minTemp;
-		   } else if (codx < PEAK - plat) {
-		     grid.AccessToTmp(coords) = maxTemp - (maxTemp - minTemp) / range * (PEAK - plat - codx);
-		   } else */if (codx < PEAK + plat) {
-		     grid.AccessToTmp(coords) = maxTemp;
-		   } else if (codx < PEAK + plat + range) {
-		     grid.AccessToTmp(coords) = maxTemp - (maxTemp - minTemp) / range * (codx - PEAK - plat);
-		   } else {
-		     grid.AccessToTmp(coords) = minTemp;
-		   }
-	           // grid.AccessToTmp(coords) = peakTmp - (peakTmp - 473.0) / (dim_x / 50) * abs(codx - PEAK);//10.0 * sin(1.0*codx / 100 * 2.0 * M_PI);                                                                                                                                 
-	           // grid.AccessToTmp(coords) = grid.AccessToTmp(coords) < 473.0 ? 473.0 : grid.AccessToTmp(coords);
-
-	/*                                                                                                                                                                                                                                                                              
-	if(codx<=0.5*dim_x)                                                                                                                                                                                                                                                             
-	  grid.AccessToTmp(coords) = temp[1];                                                                                                                                                                                                                                           
-	else                                                                                                                                                                                                                                                                            
-	  grid.AccessToTmp(coords) = temp[0];                                                                                                                                                                                                                                           
-	*/
-	         }
-	      }
+		    for(int codx=x0(grid, 0); codx < x1(grid, 0); codx++) {
+	        	for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
+	           		coords[0] = codx;
+	            	coords[1] = cody;
+	            //std::cout << grad_pos_start << " " << grad_pos_end << " " << maxTemp << " " << minTemp << std::endl;	
+		        if (codx > grad_pos_start && codx <= grad_pos_end) {
+			    	grid.AccessToTmp(coords) = maxTemp - (maxTemp - minTemp) / (grad_pos_end - grad_pos_start) * (codx - grad_pos_start);
+			    } else {
+			    	grid.AccessToTmp(coords) = 273.0; // std::min(minTemp, 273.0);
+			   	}
+	        }
+	    }
 		 
 	/*-----------------------
 	if(codx<=0.5*1000)
@@ -580,7 +566,7 @@ template <int dim> void* flip_index_helper( void* s )
         }
       }
 			// attempt a spin flip
-      /*
+  
       double r = double(rand())/double(RAND_MAX);
       if (dim == 2) {
         kT = 0.6634;
@@ -594,11 +580,11 @@ template <int dim> void* flip_index_helper( void* s )
       else if (r<exp(-dE/kT)) {
         (*(ss->grid))(x) = spin2;
       }
-      */
+      /*
       if (dE <= 0.0) {                                                                                                                                                              
         (*(ss->grid))(x) = spin2;                                                                                                                                                  
       }                                                                                                                                                                            
-
+      */
 		}
 	}
 	pthread_exit(0);
@@ -1011,13 +997,54 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
     MPI_Reduce(grains_along_line, grains_along_line_global, dim_x, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
 	if(rank==0) {
+		// first dump all the raw data on disk
 		std::ofstream ofs;
-		ofs.open("size_history.txt", std::ofstream::out | std::ofstream::app);		
+		ofs.open("size_history.txt", std::ofstream::out | std::ofstream::app);	
 		for(int i = 0; i < dim_x; i++) {
 			ofs << grains_along_line_global[i] << " ";
 		}
 		ofs << "\n";
 		ofs.close();
+
+		// smooth the gradient in the data to detect start and end 
+		int win_size = 10, curr_win_size = 0;
+		int sum = 0;
+		double mostdense = 0.0, mostsparse = 1.0 * dim_x; 
+		double grains_along_line_global_smoothed[dim_x];
+		for(int i = 0; i < dim_x; i++) {
+			if(curr_win_size < win_size) {
+				curr_win_size++;
+				sum += grains_along_line_global[i];
+			} else {
+				sum -= grains_along_line_global[i - win_size];
+				sum += grains_along_line_global[i];
+			}
+			grains_along_line_global_smoothed[i] = 1.0 * sum / curr_win_size;
+			mostdense = max(mostdense, grains_along_line_global_smoothed[i]);
+			mostsparse = min(mostsparse, grains_along_line_global_smoothed[i]);
+		}
+
+		// detect
+		for(int i = 0; i < dim_x; i++) {
+			if(grains_along_line_global_smoothed[i] > 1.1 * mostsparse) {
+				grad_pos_start = i;
+				break;
+			}
+		}
+		for(int i = dim_x - 1; i >= 0; i--) {
+			if(grains_along_line_global_smoothed[i] < 0.90 * mostdense) {
+				grad_pos_end = i;
+				break;
+			}
+		}
+
+		ofs.open("size_history_smooth.txt", std::ofstream::out | std::ofstream::app);	
+		for(int i = 0; i < dim_x; i++) {
+			ofs << grains_along_line_global_smoothed[i] << " ";
+		}
+		ofs << "\n";
+		ofs.close();
+
 	}
 
     /*

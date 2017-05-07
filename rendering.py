@@ -13,6 +13,9 @@ notifier = inotify.adapters.Inotify()
 notifier.add_watch('/home/smartcoder/Documents/Code/MS/ColumnarGrowth/')
 imgname = ""
 
+#house keeping
+subprocess.Popen("rm *.dat", shell=True)
+
 for event in notifier.event_gen():
     if event is not None:
         print event      # uncomment to see all events generated
