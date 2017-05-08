@@ -81,7 +81,7 @@ namespace MMSP {
 	            	coords[1] = cody;
 	            //std::cout << grad_pos_start << " " << grad_pos_end << " " << maxTemp << " " << minTemp << std::endl;	
 		        if (codx >= grad_pos_start && codx <= grad_pos_end) {
-			    	grid.AccessToTmp(coords) = maxTemp - (maxTemp - minTemp) / (grad_pos_end - grad_pos_start) * (codx - grad_pos_start);
+			    	grid.AccessToTmp(coords) = maxTemp ;//- (maxTemp - minTemp) / (grad_pos_end - grad_pos_start) * (codx - grad_pos_start);
 			    } else {
 			    	grid.AccessToTmp(coords) = 273.0; // std::min(minTemp, 273.0);
 			   	}
@@ -1007,39 +1007,26 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 		ofs.close();
 
 		// smooth the gradient in the data to detect start and end 
-		int win_size = 40, curr_win_size = 0;
+		int win_size = 11, curr_win_size = 0;
 		int sum = 0;
 		double mostdense = 0.0, mostsparse = 1.0 * dim_x; 
 		double grains_along_line_global_smoothed[dim_x];
-		for(int i = dim_x - 1; i >= 0; i--) {
-			if(curr_win_size < win_size) {
-				curr_win_size++;
-				sum += grains_along_line_global[i];
-			} else {
-				sum -= grains_along_line_global[i + win_size];
-				sum += grains_along_line_global[i];
-			}
-			grains_along_line_global_smoothed[i] = 1.0 * sum / curr_win_size;
+
+		int j = 0;
+		for(; j < win_size - 1; j++) sum += grains_along_line_global[j];
+		
+		for(int i = win_size / 2; i + win_size / 2 < dim_x; i++) {
+			sum += grains_along_line_global[j];
+			sum -= grains_along_line_global[j - win_size];
+			j++;
+
+			grains_along_line_global_smoothed[i] = 1.0 * sum / win_size;
 			mostdense = max(mostdense, grains_along_line_global_smoothed[i]);
 			mostsparse = min(mostsparse, grains_along_line_global_smoothed[i]);
 		}
 
 		// detect
-		for(int i = 0; i < dim_x - win_size; i++) {
-			
-			if(grains_along_line_global_smoothed[i] > mostsparse + 0.1 * (mostdense - mostsparse)) {
-				//grad_pos_start = max(grad_pos_start, i);
-				grad_pos_start = i;
-				break;
-			}
-			/*
-			if(grains_along_line_global_smoothed[i] == mostsparse) {
-				grad_pos_start = i; 
-				break;
-			}
-			*/
-		}
-		for(int i = dim_x - 1 - win_size; i >= 0; i--) {
+		for(int i = dim_x - 1 - win_size / 2; i >= 0; i--) {
 			
 			if(grains_along_line_global_smoothed[i] < mostdense - 0.2 * (mostdense - mostsparse)) {
 				//grad_pos_end = min(grad_pos_end, i);
@@ -1053,6 +1040,22 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			}
 			*/
 		}
+		for(int i = grad_pos_end; i >= 0; i--) {
+			
+			if(grains_along_line_global_smoothed[i] < mostsparse + 0.2 * (mostdense - mostsparse)) {
+				//grad_pos_start = max(grad_pos_start, i);
+				grad_pos_start = i;
+				break;
+			}
+			/*
+			if(grains_along_line_global_smoothed[i] == mostsparse) {
+				grad_pos_start = i; 
+				break;
+			}
+			*/
+		}
+		grad_pos_end += 0.2 * (mostdense - mostsparse);
+		grad_pos_start = grad_pos_end - 20;
 		/*
 		// randomly shift the range by one
 		if(double(rand())/double(RAND_MAX) < 0.5) {
@@ -1069,6 +1072,12 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 		ofs.close();
 
 	}
+	int data[2] = {grad_pos_start, grad_pos_end};
+	MPI_Bcast(data, 2, MPI_INT, 0, MPI_COMM_WORLD);
+	grad_pos_start = data[0];
+	grad_pos_end = data[1];
+
+	//std::cout << grad_pos_start << " " << grad_pos_end << std::endl;
 
     /*
     if(rank == 0) {
