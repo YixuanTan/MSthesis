@@ -37,7 +37,7 @@
 
 int grad_pos_start = 0;
 int grad_pos_end = 10;
-
+int mid_check = (grad_pos_end + grad_pos_start) / 2;
 /* ------- Al-Cu alloy film
 double lambda = 3.75e-3; //This is fixed from Monte Carlo simulation, so do not change it.  here 10 um is the domain size, so each pixel is 10 nm, all length unit should be with um.
 double L_initial = 30.0e-3; // initially 30 nm diameter
@@ -81,7 +81,7 @@ namespace MMSP {
 	            	coords[1] = cody;
 	            //std::cout << grad_pos_start << " " << grad_pos_end << " " << maxTemp << " " << minTemp << std::endl;	
 		        if (codx >= grad_pos_start && codx <= grad_pos_end) {
-			    	grid.AccessToTmp(coords) = maxTemp ;//- (maxTemp - minTemp) / (grad_pos_end - grad_pos_start) * (codx - grad_pos_start);
+			    	grid.AccessToTmp(coords) = maxTemp - (maxTemp - minTemp) / (grad_pos_end - grad_pos_start) * (codx - grad_pos_start);
 			    } else {
 			    	grid.AccessToTmp(coords) = 273.0; // std::min(minTemp, 273.0);
 			   	}
@@ -1012,72 +1012,50 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 		double mostdense = 0.0, mostsparse = 1.0 * dim_x; 
 		double grains_along_line_global_smoothed[dim_x];
 
-		int j = 0;
-		for(; j < win_size - 1; j++) sum += grains_along_line_global[j];
+		if(mid_check <= grad_pos_start) mid_check = grad_pos_end;
+		std::cout << grains_along_line_global[grad_pos_start] << "  " << grains_along_line_global[mid_check] << std::endl;
+		if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start]) < 0.1*grains_along_line_global[grad_pos_start]) {
+			int delta = mid_check - grad_pos_start;
+			grad_pos_start += delta;
+			grad_pos_end += delta;
+		}
+		mid_check--;
 		
-		for(int i = win_size / 2; i + win_size / 2 < dim_x; i++) {
-			sum += grains_along_line_global[j];
-			sum -= grains_along_line_global[j - win_size];
-			j++;
-
-			grains_along_line_global_smoothed[i] = 1.0 * sum / win_size;
-			mostdense = max(mostdense, grains_along_line_global_smoothed[i]);
-			mostsparse = min(mostsparse, grains_along_line_global_smoothed[i]);
-		}
-
-		// detect
-		for(int i = dim_x - 1 - win_size / 2; i >= 0; i--) {
-			
-			if(grains_along_line_global_smoothed[i] < mostdense - 0.2 * (mostdense - mostsparse)) {
-				//grad_pos_end = min(grad_pos_end, i);
-				grad_pos_end = i;
-				break;
-			}
-			/*
-			if(grains_along_line_global_smoothed[i] == mostdense) {
-				grad_pos_end = i; 
-				break;
-			}
-			*/
-		}
-		for(int i = grad_pos_end; i >= 0; i--) {
-			
-			if(grains_along_line_global_smoothed[i] < mostsparse + 0.2 * (mostdense - mostsparse)) {
-				//grad_pos_start = max(grad_pos_start, i);
-				grad_pos_start = i;
-				break;
-			}
-			/*
-			if(grains_along_line_global_smoothed[i] == mostsparse) {
-				grad_pos_start = i; 
-				break;
-			}
-			*/
-		}
-		grad_pos_end += 0.2 * (mostdense - mostsparse);
-		grad_pos_start = grad_pos_end - 20;
 		/*
-		// randomly shift the range by one
-		if(double(rand())/double(RAND_MAX) < 0.5) {
-			grad_pos_start++;
-			grad_pos_end++; 
+		int loc_max_deriv = 0; 
+		double max_deriv = 0.0;
+		for(int i = 0; i < dim_x; i++) {
+			if(i!= 0 && grains_along_line_global[i] - grains_along_line_global[i - 1] > max_deriv) {
+				max_deriv = grains_along_line_global[i] - grains_along_line_global[i - 1] ;
+				loc_max_deriv = i;
+			}
+			mostsparse = min(mostsparse, (double)grains_along_line_global[i]);
+			mostdense = max(mostdense, (double)grains_along_line_global[i]);
 		}
 		*/
-		std::cout << mostsparse << " " << mostdense << " " << grad_pos_start << " " << grad_pos_end << std::endl;
+		/*
+		//grad_pos_start = loc_max_deriv;
+		//grad_pos_end = grad_pos_start + 10;
+		if((steps_finished + step) % 100 == 0) {
+			grad_pos_start++;
+			grad_pos_end++;
+		}
+		
+		//std::cout << mostsparse << " " << mostdense << " " << grad_pos_start << " " << grad_pos_end << std::endl;
 		ofs.open("size_history_smooth.txt", std::ofstream::out | std::ofstream::app);	
 		for(int i = 0; i < dim_x; i++) {
 			ofs << grains_along_line_global_smoothed[i] << " ";
 		}
 		ofs << "\n\n";
 		ofs.close();
-
+		*/
 	}
 	int data[2] = {grad_pos_start, grad_pos_end};
 	MPI_Bcast(data, 2, MPI_INT, 0, MPI_COMM_WORLD);
 	grad_pos_start = data[0];
 	grad_pos_end = data[1];
 
-	//std::cout << grad_pos_start << " " << grad_pos_end << std::endl;
+	if(rank == 0) std::cout << "grad_pos_start:" << grad_pos_start << "   grad_pos_end:" << grad_pos_end << std::endl;
 
     /*
     if(rank == 0) {
