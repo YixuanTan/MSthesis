@@ -14,7 +14,7 @@ notifier.add_watch('/home/smartcoder/Documents/Code/MS/ColumnarGrowth/')
 imgname = ""
 
 #house keeping
-subprocess.Popen("rm *.dat", shell=True)
+subprocess.Popen("rm *.dat *.png", shell=True)
 
 for event in notifier.event_gen():
     if event is not None:
