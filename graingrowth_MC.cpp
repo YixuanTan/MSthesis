@@ -38,9 +38,9 @@
 #include"output.cpp"
 
 int grad_pos_start = 0;
-int grad_pos_end = 100;
+int grad_pos_end = 50;
 int mid_check = (grad_pos_end + grad_pos_start) / 2;
-double domainLen = 100.0;
+double domainLen = 10.0;
 /* ------- Al-Cu alloy film
 double lambda = 3.75e-3; //This is fixed from Monte Carlo simulation, so do not change it.  here 10 um is the domain size, so each pixel is 10 nm, all length unit should be with um.
 double L_initial = 30.0e-3; // initially 30 nm diameter
@@ -89,7 +89,7 @@ namespace MMSP {
 		}
 		tempFullSpace.back() = pointtemp[len - 1];
 		int rank = MPI::COMM_WORLD.Get_rank();
-		/*
+		
 		if(rank == 3) {
 			std::cout << "\n started " << std::endl;
 			for(auto& tt : tempFullSpace) {
@@ -97,7 +97,7 @@ namespace MMSP {
 			}
 			std::cout << "done \n" << std::endl;
 		}
-		*/
+		
 		vector<int> coords (dim,0);
 		if(dim==2){
 		    for(int codx=x0(grid, 0); codx < x1(grid, 0); codx++) {
@@ -106,7 +106,7 @@ namespace MMSP {
 		        	coords[1] = cody;
 			    	grid.AccessToTmp(coords) = tempFullSpace[codx]; //(codx < 100 ? 500 : tempFullSpace[codx]);
 			    } 
-			    std::cout << "at codx = " << codx << "  " << tempFullSpace[codx] << std::endl;
+			    //std::cout << "at codx = " << codx << "  " << tempFullSpace[codx] << std::endl;
 		    }
 		} else if(dim==3){
 			for(int codx=x0(grid, 0); codx < x1(grid, 0); codx++) {
@@ -976,7 +976,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			MPI_Bcast(pointtemp, 241, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 			UpdateLocalTmp(grid, position, pointtemp, maxTemp, minTemp);
 		}
-		
+
 
 	    double tmc_at_PdenominatorMax = 0.0;
 	    double tmp_at_PdenominatorMax = 0.0;
