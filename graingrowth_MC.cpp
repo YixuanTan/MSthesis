@@ -37,10 +37,13 @@
 #include"tessellate.hpp"
 #include"output.cpp"
 
-int grad_pos_start = 0;
-int grad_pos_end = 50;
+int grad_pos_start = 100;
+int grad_pos_end = 150;
 int mid_check = (grad_pos_end + grad_pos_start) / 2;
 double domainLen = 10.0;
+double position_stack[241];
+double pointtemp_stack[241];
+
 /* ------- Al-Cu alloy film
 double lambda = 3.75e-3; //This is fixed from Monte Carlo simulation, so do not change it.  here 10 um is the domain size, so each pixel is 10 nm, all length unit should be with um.
 double L_initial = 30.0e-3; // initially 30 nm diameter
@@ -98,6 +101,8 @@ namespace MMSP {
 			std::cout << "done \n" << std::endl;
 		}
 		
+		maxTemp = 773.0;
+		minTemp = 473.0;
 		vector<int> coords (dim,0);
 		if(dim==2){
 		    for(int codx=x0(grid, 0); codx < x1(grid, 0); codx++) {
@@ -105,6 +110,12 @@ namespace MMSP {
 		    	for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
 		        	coords[1] = cody;
 			    	grid.AccessToTmp(coords) = tempFullSpace[codx]; //(codx < 100 ? 500 : tempFullSpace[codx]);
+		        	/*
+		        	if (codx >= grad_pos_start && codx <= grad_pos_end) {
+		        		grid.AccessToTmp(coords) = maxTemp - (maxTemp - minTemp) / (grad_pos_end - grad_pos_start) * (codx - grad_pos_start);
+		        	}
+		        	else grid.AccessToTmp(coords) = 273.0; 
+			    	*/
 			    } 
 			    //std::cout << "at codx = " << codx << "  " << tempFullSpace[codx] << std::endl;
 		    }
@@ -971,6 +982,10 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			    while(ss >> position[index] && ss >> pointtemp[index++]) {}
 			    //for(int tt = 0; tt < 241; tt++) std::cout << std::setw(10) << pointtemp[tt];
 			    //std::cout << "\n\n" << std::endl;
+			    for(int nd = 0; nd < 241; nd++) {
+			    	position_stack[nd] = position[nd];
+			    	pointtemp_stack[nd] = pointtemp[nd];
+			    }
 			}
 			MPI_Bcast(position, 241, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 			MPI_Bcast(pointtemp, 241, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -1002,7 +1017,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 	      // pow(lambda*(1+K1*pow(tmc_at_PdenominatorMax_global, n1)), n) )/K_/exp(-Q/R/tmp_at_PdenominatorMax_global);
 
 		
-	    int num_of_sublattices=0;
+	    int num_of_sublattices = 0;
 	    if(dim==2) num_of_sublattices = 4; 
 	    else if(dim==3) num_of_sublattices = 8;
 			for (int sublattice=0; sublattice < num_of_sublattices; sublattice++) {
@@ -1045,8 +1060,10 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 
 	    MPI_Reduce(grains_along_line, grains_along_line_global, dim_x, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
-		if((steps_finished + step) % 100 == 0 && rank==0) {
+		//if((steps_finished + step) % 100 == 0 && rank==0) {
+	    if(rank==0) { // do not fix the update time interval
 			// first dump all the raw data on disk
+			/*
 			std::ofstream ofs;
 			ofs.open("size_history.txt", std::ofstream::out | std::ofstream::app);	
 			for(int i = 0; i < dim_x; i++) {
@@ -1054,23 +1071,24 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			}
 			ofs << "\n";
 			ofs.close();
-
+			*/
 			// smooth the gradient in the data to detect start and end 
 			int sum = 0;
 			double mostdense = 0.0, mostsparse = 1.0 * dim_x; 
 			double grains_along_line_global_smoothed[dim_x];
-
-			if(mid_check <= grad_pos_start) mid_check = grad_pos_end;
+			bool shouldUpdate = false;
+			if(mid_check <= grad_pos_start + 0.25 * (grad_pos_end - grad_pos_start)) mid_check = grad_pos_end;
 			std::cout << grains_along_line_global[grad_pos_start] << "  " << grains_along_line_global[mid_check] << std::endl;
-			/*
+			
 			if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start]) < 0.1*grains_along_line_global[grad_pos_start]) {
-				
-				int delta = mid_check - grad_pos_start;
+				//int delta = mid_check - grad_pos_start;
+				int delta = (mid_check - grad_pos_start) / 2; // delta is a very important parameter to make columnar!
 				grad_pos_start += delta;
 				grad_pos_end += delta;
+				shouldUpdate = true;
 			}
 			mid_check--;
-			*/
+			
 			
 			/*
 			int loc_max_deriv = 0; 
@@ -1100,56 +1118,68 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			ofs << "\n\n";
 			ofs.close();
 			*/
+			if(shouldUpdate) {
 
-	    	char orgpath[256];
-	    	char *path = getcwd(orgpath, 256);
+		    	char orgpath[256];
+		    	char *path = getcwd(orgpath, 256);
 
-		    int rc = chdir("/home/smartcoder/Documents/Developer/InverseGG/thermal/ColumnarGrowthTempInverse/");
-		    if (rc < 0) {
-		        std::cerr << "wrong working directory" << std::endl;
-		    }
+			    int rc = chdir("/home/smartcoder/Documents/Developer/InverseGG/thermal/ColumnarGrowthTempInverse/");
+			    if (rc < 0) {
+			        std::cerr << "wrong working directory" << std::endl;
+			    }
 
-			std::string cmd = "./driver";
-			cmd += " " + std::to_string(grad_pos_start * domainLen / dim_x) + " " + std::to_string(grad_pos_end * domainLen / dim_x);
-		    char buffer[128];
-		    std::string result = "";
-		    std::cout << "cmd is  " << cmd << std::endl;
-		    FILE* pipe = popen(cmd.c_str(), "r");
-		    if (!pipe) throw std::runtime_error("popen() failed!");
-		    try {
-		        while (!feof(pipe)) {
-		            if (fgets(buffer, 128, pipe) != NULL) {
-		                result += buffer;
-		                //std::cout << "buffer is " << buffer << std::endl;
-		            }
-		        }
-		    } catch (...) {
-		        pclose(pipe);
-		        throw;
-		    }
-		    pclose(pipe);
+				std::string cmd = "./driver";
+				cmd += " " + std::to_string(grad_pos_start * domainLen / dim_x) + " " + std::to_string(grad_pos_end * domainLen / dim_x);
+			    char buffer[128];
+			    std::string result = "";
+			    std::cout << "cmd is  " << cmd << std::endl;
+			    FILE* pipe = popen(cmd.c_str(), "r");
+			    if (!pipe) throw std::runtime_error("popen() failed!");
+			    try {
+			        while (!feof(pipe)) {
+			            if (fgets(buffer, 128, pipe) != NULL) {
+			                result += buffer;
+			                //std::cout << "buffer is " << buffer << std::endl;
+			            }
+			        }
+			    } catch (...) {
+			        pclose(pipe);
+			        throw;
+			    }
+			    pclose(pipe);
 
-		    rc = chdir(orgpath);
-		    if (rc < 0) {
-		        std::cerr << "switch back working directory failed" << std::endl;
-		    }
+			    rc = chdir(orgpath);
+			    if (rc < 0) {
+			        std::cerr << "switch back working directory failed" << std::endl;
+			    }
 
-		    //std::cout << "result is \n" << result << std::endl;
-		    std::stringstream ss(result);
-		    int index = 0; 
-		    //std::cout << "ss is \n" << ss.str() << std::endl;
-		    while(ss >> position[index] && ss >> pointtemp[index++]) {}
-		    //for(int tt = 0; tt < 241; tt++) std::cout << std::setw(10) << pointtemp[tt];
-		    //std::cout << "\n\n" << std::endl;
+			    //std::cout << "result is \n" << result << std::endl;
+			    std::stringstream ss(result);
+			    int index = 0; 
+			    //std::cout << "ss is \n" << ss.str() << std::endl;
+			    while(ss >> position[index] && ss >> pointtemp[index++]) {}
+			    //for(int tt = 0; tt < 241; tt++) std::cout << std::setw(10) << pointtemp[tt];
+			    //std::cout << "\n\n" << std::endl;
+			    for(int nd = 0; nd < 241; nd++) {
+			    	position_stack[nd] = position[nd];
+			    	pointtemp_stack[nd] = pointtemp[nd];
+			    }
+			}
+			else {
+			    for(int nd = 0; nd < 241; nd++) {
+			    	position[nd] = position_stack[nd];
+			    	pointtemp[nd] = pointtemp_stack[nd];
+			    }
+			}
 		}
 		MPI_Bcast(position, 241, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 		MPI_Bcast(pointtemp, 241, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 		physical_time += t_inc;
 		UpdateLocalTmc(grid, t_inc);
-		if((steps_finished + step) % 100 == 0) {
-			UpdateLocalTmp(grid, position, pointtemp, maxTemp, minTemp);
-		}
+		//if((steps_finished + step) % 100 == 0) {
+		UpdateLocalTmp(grid, position, pointtemp, maxTemp, minTemp);
+		//}
 
 		//if(rank == 0) std::cout << "grad_pos_start:" << grad_pos_start << "   grad_pos_end:" << grad_pos_end << std::endl;
 
@@ -1161,51 +1191,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 	    }
 	    */
 
-
-
-		// when the scan reach the end of x direction:
-
-		//if(rank==0)
-		//    std::cout<< (int)((1 + steps_finished + step) / velInverse) << "  " << dim_x << std::endl;
-		/*
-		if((int)((1 + steps_finished + step) / velInverse) == dim_x) {
-			unsigned long number_of_grains = 0;
-			calCulateGrainSizeAlongY(grid, number_of_grains);
-			unsigned long total_number_of_grains = 0;
-			MPI::COMM_WORLD.Allreduce(&number_of_grains, &total_number_of_grains, 1, MPI_UNSIGNED_LONG, MPI_SUM);
-			MPI::COMM_WORLD.Barrier();
-			double grain_size_along_y = 1.0*dim_y/total_number_of_grains;
-			MPI::COMM_WORLD.Barrier();
-
-			number_of_grains = 0;
-			calCulateGrainSizeAlongX(grid, number_of_grains);
-			total_number_of_grains = 0;
-			MPI::COMM_WORLD.Allreduce(&number_of_grains, &total_number_of_grains, 1, MPI_UNSIGNED_LONG, MPI_SUM);
-			MPI::COMM_WORLD.Barrier();
-			double grain_size_along_x = 1.0*dim_x/total_number_of_grains;
-
-			if(rank==0) {
-				std::ofstream ofs;
-				std::string mid = std::to_string(velInverse) + "_" + std::to_string(maxTemp) + "_" + std::to_string(minTemp) + "_" + std::to_string(plat) + "_" + std::to_string(range); 
-				ofs.open("/gpfs/u/home/ACME/ACMEtany/scratch/MSthesis/" + mid + ".txt", std::ofstream::out);		
-				//std::cout << grain_size_along_x << "   " << grain_size_along_y << std::endl;
-				ofs << velInverse << "," << maxTemp << "," << minTemp << "," << plat << "," << range;
-				if(grain_size_along_x > 2 * grain_size_along_y) {
-					// output true
-					ofs << "  1\n";
-				} else {
-					ofs << "  0\n";
-				}
-				ofs.close();
-			}
-		}
-		*/
-
-	/*
-		if(rank==0)
-		    std::cout<< "physical_time is "<<physical_time<< " grain_size "<<grain_size<<std::endl;
-	*/
-			update_timer += rdtsc()-start;
+		update_timer += rdtsc()-start;
 	}//loop over step
 
 	#ifndef SILENT
