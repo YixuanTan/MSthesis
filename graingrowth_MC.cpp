@@ -38,11 +38,11 @@
 #include"output.cpp"
 
 int grad_pos_start = 100;
-int grad_pos_end = 150;
+int grad_pos_end = 200;
 int mid_check = (grad_pos_end + grad_pos_start) / 2;
 double domainLen = 10.0;
-double position_stack[241];
-double pointtemp_stack[241];
+double position_stack[151];
+double pointtemp_stack[151];
 
 /* ------- Al-Cu alloy film
 double lambda = 3.75e-3; //This is fixed from Monte Carlo simulation, so do not change it.  here 10 um is the domain size, so each pixel is 10 nm, all length unit should be with um.
@@ -78,10 +78,10 @@ namespace MMSP {
 
   	template <int dim> void UpdateLocalTmp(MMSP::grid<dim, unsigned long>& grid, double position[], double pointtemp[], double maxTemp, double minTemp){
 		//int rank = MPI::COMM_WORLD.Get_rank();
-		//if(rank == 0) for(int tt = 0; tt < 241; tt++) std::cout << pointtemp[tt] << std::endl;
+		//if(rank == 0) for(int tt = 0; tt < 151; tt++) std::cout << pointtemp[tt] << std::endl;
 
 		std::vector<int> tempFullSpace(dim_x);
-		int j = 0, len = 241;
+		int j = 0, len = 151;
 		for(int i = 1; i < len; i++) {
 			double prev = pointtemp[i-1];
 			double slope = (pointtemp[i] - pointtemp[i-1]) / (position[i] / domainLen  - position[i-1] / domainLen);
@@ -937,8 +937,8 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
   }//for int i
 
 	for (int step=0; step<steps; step++){
-		double position[241] = {0.0};
-		double pointtemp[241] = {0.0};
+		double position[151] = {0.0};
+		double pointtemp[151] = {0.0};
 
 		if (steps_finished + step == 0) {
 			if(rank == 0) {
@@ -980,15 +980,15 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			    int index = 0; 
 			    //std::cout << "ss is \n" << ss.str() << std::endl;
 			    while(ss >> position[index] && ss >> pointtemp[index++]) {}
-			    //for(int tt = 0; tt < 241; tt++) std::cout << std::setw(10) << pointtemp[tt];
+			    //for(int tt = 0; tt < 151; tt++) std::cout << std::setw(10) << pointtemp[tt];
 			    //std::cout << "\n\n" << std::endl;
-			    for(int nd = 0; nd < 241; nd++) {
+			    for(int nd = 0; nd < 151; nd++) {
 			    	position_stack[nd] = position[nd];
 			    	pointtemp_stack[nd] = pointtemp[nd];
 			    }
 			}
-			MPI_Bcast(position, 241, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-			MPI_Bcast(pointtemp, 241, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+			MPI_Bcast(position, 151, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+			MPI_Bcast(pointtemp, 151, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 			UpdateLocalTmp(grid, position, pointtemp, maxTemp, minTemp);
 		}
 
@@ -1077,12 +1077,23 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			double mostdense = 0.0, mostsparse = 1.0 * dim_x; 
 			double grains_along_line_global_smoothed[dim_x];
 			bool shouldUpdate = false;
-			if(mid_check <= grad_pos_start + 0.25 * (grad_pos_end - grad_pos_start)) mid_check = grad_pos_end;
+			int check_offset = 10;
+			//if(mid_check <= grad_pos_start + 0.33 * (grad_pos_end - grad_pos_start)) mid_check = grad_pos_end;
+			if(mid_check <= grad_pos_start + check_offset) mid_check = grad_pos_end;
 			std::cout << grains_along_line_global[grad_pos_start] << "  " << grains_along_line_global[mid_check] << std::endl;
 			
+			//double avg_desired_size = 0.0;
+			//for(int idx = grad_pos_start + check_offset; idx < mid_check; idx++) {
+			//	avg_desired_size += grains_along_line_global[idx] / (mid_check - grad_pos_start - check_offset);
+			//}
+
+			//if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start]) <= 1) {
 			if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start]) < 0.1*grains_along_line_global[grad_pos_start]) {
+			//if(abs(grains_along_line_global[mid_check] - avg_desired_size) < 0.1*avg_desired_size) {
+			//if(abs(grains_along_line_global[mid_check] - avg_desired_size) <= 1) {
 				//int delta = mid_check - grad_pos_start;
-				int delta = (mid_check - grad_pos_start) / 2; // delta is a very important parameter to make columnar!
+				int delta = max(1, (mid_check - grad_pos_start) / 4); // delta is a very important parameter to make columnar!
+				//int delta = 1;
 				grad_pos_start += delta;
 				grad_pos_end += delta;
 				shouldUpdate = true;
@@ -1158,22 +1169,22 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			    int index = 0; 
 			    //std::cout << "ss is \n" << ss.str() << std::endl;
 			    while(ss >> position[index] && ss >> pointtemp[index++]) {}
-			    //for(int tt = 0; tt < 241; tt++) std::cout << std::setw(10) << pointtemp[tt];
+			    //for(int tt = 0; tt < 151; tt++) std::cout << std::setw(10) << pointtemp[tt];
 			    //std::cout << "\n\n" << std::endl;
-			    for(int nd = 0; nd < 241; nd++) {
+			    for(int nd = 0; nd < 151; nd++) {
 			    	position_stack[nd] = position[nd];
 			    	pointtemp_stack[nd] = pointtemp[nd];
 			    }
 			}
 			else {
-			    for(int nd = 0; nd < 241; nd++) {
+			    for(int nd = 0; nd < 151; nd++) {
 			    	position[nd] = position_stack[nd];
 			    	pointtemp[nd] = pointtemp_stack[nd];
 			    }
 			}
 		}
-		MPI_Bcast(position, 241, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-		MPI_Bcast(pointtemp, 241, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		MPI_Bcast(position, 151, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		MPI_Bcast(pointtemp, 151, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 		physical_time += t_inc;
 		UpdateLocalTmc(grid, t_inc);
