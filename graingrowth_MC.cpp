@@ -37,8 +37,8 @@
 #include"tessellate.hpp"
 #include"output.cpp"
 
-int grad_pos_start = 100;
-int grad_pos_end = 200;
+int grad_pos_start = 0;
+int grad_pos_end = 100;
 int mid_check = (grad_pos_end + grad_pos_start) / 2;
 double domainLen = 10.0;
 double position_stack[151];
@@ -93,6 +93,7 @@ namespace MMSP {
 		tempFullSpace.back() = pointtemp[len - 1];
 		int rank = MPI::COMM_WORLD.Get_rank();
 		
+		/*
 		if(rank == 3) {
 			std::cout << "\n started " << std::endl;
 			for(auto& tt : tempFullSpace) {
@@ -100,7 +101,7 @@ namespace MMSP {
 			}
 			std::cout << "done \n" << std::endl;
 		}
-		
+		*/
 		maxTemp = 773.0;
 		minTemp = 473.0;
 		vector<int> coords (dim,0);
@@ -108,14 +109,15 @@ namespace MMSP {
 		    for(int codx=x0(grid, 0); codx < x1(grid, 0); codx++) {
 				coords[0] = codx;
 		    	for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
+		    		/*
 		        	coords[1] = cody;
 			    	grid.AccessToTmp(coords) = tempFullSpace[codx]; //(codx < 100 ? 500 : tempFullSpace[codx]);
-		        	/*
+		        	*/
 		        	if (codx >= grad_pos_start && codx <= grad_pos_end) {
-		        		grid.AccessToTmp(coords) = maxTemp - (maxTemp - minTemp) / (grad_pos_end - grad_pos_start) * (codx - grad_pos_start);
+		        		grid.AccessToTmp(coords) = std::max(623.0, 473.0 + 500 / (grad_pos_end - grad_pos_start) * (grad_pos_end - codx));
 		        	}
-		        	else grid.AccessToTmp(coords) = 273.0; 
-			    	*/
+		        	else grid.AccessToTmp(coords) = 473.0; 
+			    	
 			    } 
 			    //std::cout << "at codx = " << codx << "  " << tempFullSpace[codx] << std::endl;
 		    }
@@ -954,7 +956,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 				cmd += " " + std::to_string(grad_pos_start * domainLen / dim_x) + " " + std::to_string(grad_pos_end * domainLen / dim_x);
 			    char buffer[128];
 			    std::string result = "";
-			    std::cout << "cmd is  " << cmd << std::endl;
+			    //std::cout << "cmd is  " << cmd << std::endl;
 			    FILE* pipe = popen(cmd.c_str(), "r");
 			    if (!pipe) throw std::runtime_error("popen() failed!");
 			    try {
@@ -1060,77 +1062,25 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 
 	    MPI_Reduce(grains_along_line, grains_along_line_global, dim_x, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
-		//if((steps_finished + step) % 100 == 0 && rank==0) {
 	    if(rank==0) { // do not fix the update time interval
-			// first dump all the raw data on disk
-			/*
-			std::ofstream ofs;
-			ofs.open("size_history.txt", std::ofstream::out | std::ofstream::app);	
-			for(int i = 0; i < dim_x; i++) {
-				ofs << grains_along_line_global[i] << " ";
-			}
-			ofs << "\n";
-			ofs.close();
-			*/
-			// smooth the gradient in the data to detect start and end 
 			int sum = 0;
-			double mostdense = 0.0, mostsparse = 1.0 * dim_x; 
 			double grains_along_line_global_smoothed[dim_x];
 			bool shouldUpdate = false;
 			int check_offset = 10;
-			//if(mid_check <= grad_pos_start + 0.33 * (grad_pos_end - grad_pos_start)) mid_check = grad_pos_end;
 			if(mid_check <= grad_pos_start + check_offset) mid_check = grad_pos_end;
-			std::cout << grains_along_line_global[grad_pos_start] << "  " << grains_along_line_global[mid_check] << std::endl;
+			//std::cout << grains_along_line_global[grad_pos_start] << "  " << grains_along_line_global[mid_check] << std::endl;
 			
-			//double avg_desired_size = 0.0;
-			//for(int idx = grad_pos_start + check_offset; idx < mid_check; idx++) {
-			//	avg_desired_size += grains_along_line_global[idx] / (mid_check - grad_pos_start - check_offset);
-			//}
-
-			//if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start]) <= 1) {
 			if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start]) < 0.1*grains_along_line_global[grad_pos_start]) {
-			//if(abs(grains_along_line_global[mid_check] - avg_desired_size) < 0.1*avg_desired_size) {
-			//if(abs(grains_along_line_global[mid_check] - avg_desired_size) <= 1) {
-				//int delta = mid_check - grad_pos_start;
-				int delta = max(1, (mid_check - grad_pos_start) / 4); // delta is a very important parameter to make columnar!
-				//int delta = 1;
+				int delta = max(1, (mid_check - grad_pos_start) / 10); // delta is a very important parameter to make columnar!
 				grad_pos_start += delta;
 				grad_pos_end += delta;
 				shouldUpdate = true;
 			}
 			mid_check--;
-			
-			
-			/*
-			int loc_max_deriv = 0; 
-			double max_deriv = 0.0;
-			for(int i = 0; i < dim_x; i++) {
-				if(i!= 0 && grains_along_line_global[i] - grains_along_line_global[i - 1] > max_deriv) {
-					max_deriv = grains_along_line_global[i] - grains_along_line_global[i - 1] ;
-					loc_max_deriv = i;
-				}
-				mostsparse = min(mostsparse, (double)grains_along_line_global[i]);
-				mostdense = max(mostdense, (double)grains_along_line_global[i]);
-			}
-			*/
-			/*
-			//grad_pos_start = loc_max_deriv;
-			//grad_pos_end = grad_pos_start + 10;
-			if((steps_finished + step) % 100 == 0) {
-				grad_pos_start++;
-				grad_pos_end++;
-			}
-			
-			//std::cout << mostsparse << " " << mostdense << " " << grad_pos_start << " " << grad_pos_end << std::endl;
-			ofs.open("size_history_smooth.txt", std::ofstream::out | std::ofstream::app);	
-			for(int i = 0; i < dim_x; i++) {
-				ofs << grains_along_line_global_smoothed[i] << " ";
-			}
-			ofs << "\n\n";
-			ofs.close();
-			*/
+
 			if(shouldUpdate) {
 
+				/*
 		    	char orgpath[256];
 		    	char *path = getcwd(orgpath, 256);
 
@@ -1143,7 +1093,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 				cmd += " " + std::to_string(grad_pos_start * domainLen / dim_x) + " " + std::to_string(grad_pos_end * domainLen / dim_x);
 			    char buffer[128];
 			    std::string result = "";
-			    std::cout << "cmd is  " << cmd << std::endl;
+			    //std::cout << "cmd is  " << cmd << std::endl;
 			    FILE* pipe = popen(cmd.c_str(), "r");
 			    if (!pipe) throw std::runtime_error("popen() failed!");
 			    try {
@@ -1163,6 +1113,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			    if (rc < 0) {
 			        std::cerr << "switch back working directory failed" << std::endl;
 			    }
+				
 
 			    //std::cout << "result is \n" << result << std::endl;
 			    std::stringstream ss(result);
@@ -1171,6 +1122,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			    while(ss >> position[index] && ss >> pointtemp[index++]) {}
 			    //for(int tt = 0; tt < 151; tt++) std::cout << std::setw(10) << pointtemp[tt];
 			    //std::cout << "\n\n" << std::endl;
+			    */
 			    for(int nd = 0; nd < 151; nd++) {
 			    	position_stack[nd] = position[nd];
 			    	pointtemp_stack[nd] = pointtemp[nd];
@@ -1187,6 +1139,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 		MPI_Bcast(pointtemp, 151, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 		physical_time += t_inc;
+		if(rank == 0) std::cout << physical_time << std::endl;
 		UpdateLocalTmc(grid, t_inc);
 		//if((steps_finished + step) % 100 == 0) {
 		UpdateLocalTmp(grid, position, pointtemp, maxTemp, minTemp);
