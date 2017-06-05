@@ -37,12 +37,18 @@
 #include"tessellate.hpp"
 #include"output.cpp"
 
+// grid point dimension
+int dim_x = 500; 
+int dim_y = 200; 
+int dim_z = 700; 
+
 int grad_pos_start = 0;
-int grad_pos_end = 100;
+int grad_pos_end = 50;
 int mid_check = (grad_pos_end + grad_pos_start) / 2;
 double domainLen = 10.0;
-double position_stack[151];
-double pointtemp_stack[151];
+int update_period = 10;
+int update_count = 0;
+double tempFullSpace[500];
 
 /* ------- Al-Cu alloy film
 double lambda = 3.75e-3; //This is fixed from Monte Carlo simulation, so do not change it.  here 10 um is the domain size, so each pixel is 10 nm, all length unit should be with um.
@@ -57,7 +63,7 @@ double R = 8.314;
 */
 
 // ---------Cu film
-double lambda = 1.1/1*1.0e-3;  //length unit is in mm, each pixel is 0.275 um
+double lambda = 1.1/2*1.0e-3;  //length unit is in mm, each pixel is 0.275 um
 double L_initial = 1.1e-3; 
 double L0 = 1.1e-3; 
 double K1 = 0.6263;
@@ -68,59 +74,39 @@ double n = 2;
 double K_ = 94.3; //fitted from Gangulee, A. ”Structure of electroplated and vapordeposited copper films. III. Recrystallization and grain growth.” Journal of Applied Physics 45.9 (1974): 3749-3756.
 double R = 8.314;
 
-// grid point dimension
-int dim_x = 500; 
-int dim_y = 200; 
-int dim_z = 700; 
 
 namespace MMSP { 
 	template <int dim> bool OutsideDomainCheck(MMSP::grid<dim, unsigned long>& grid, vector<int>* x);
 
-  	template <int dim> void UpdateLocalTmp(MMSP::grid<dim, unsigned long>& grid, double position[], double pointtemp[], double maxTemp, double minTemp){
+  	template <int dim> void UpdateLocalTmp(MMSP::grid<dim, unsigned long>& grid, double tempFullSpace[]){
 		//int rank = MPI::COMM_WORLD.Get_rank();
 		//if(rank == 0) for(int tt = 0; tt < 151; tt++) std::cout << pointtemp[tt] << std::endl;
 
-		std::vector<int> tempFullSpace(dim_x);
-		int j = 0, len = 151;
-		for(int i = 1; i < len; i++) {
-			double prev = pointtemp[i-1];
-			double slope = (pointtemp[i] - pointtemp[i-1]) / (position[i] / domainLen  - position[i-1] / domainLen);
-			while(j < position[i] / domainLen * dim_x) {
-				tempFullSpace[j] = pointtemp[i-1] + ((double)j / dim_x - position[i-1] / domainLen) * slope;
-				j++;
-			}
-		}
-		tempFullSpace.back() = pointtemp[len - 1];
 		int rank = MPI::COMM_WORLD.Get_rank();
 		
 		/*
 		if(rank == 3) {
 			std::cout << "\n started " << std::endl;
-			for(auto& tt : tempFullSpace) {
-				std::cout << std::setw(10) << tt;
+			for(int i = 0; i < dim_x; i++) {
+				std::cout << std::setw(10) << tempFullSpace[i];
 			}
 			std::cout << "done \n" << std::endl;
 		}
 		*/
-		maxTemp = 773.0;
-		minTemp = 473.0;
 		vector<int> coords (dim,0);
 		if(dim==2){
 		    for(int codx=x0(grid, 0); codx < x1(grid, 0); codx++) {
 				coords[0] = codx;
 		    	for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
-		    		/*
-		        	coords[1] = cody;
-			    	grid.AccessToTmp(coords) = tempFullSpace[codx]; //(codx < 100 ? 500 : tempFullSpace[codx]);
-		        	*/
+		    		coords[1] = cody;
 		        	if (codx >= grad_pos_start && codx <= grad_pos_end) {
-		        		grid.AccessToTmp(coords) = std::max(623.0, 473.0 + 500 / (grad_pos_end - grad_pos_start) * (grad_pos_end - codx));
+		        		//grid.AccessToTmp(coords) = std::min(623.0, 473.0 + 500.0 / (grad_pos_end - grad_pos_start) * (grad_pos_end - codx));
+		        		grid.AccessToTmp(coords) = tempFullSpace[codx];
 		        	}
 		        	else grid.AccessToTmp(coords) = 473.0; 
-			    	
-			    } 
-			    //std::cout << "at codx = " << codx << "  " << tempFullSpace[codx] << std::endl;
-		    }
+			    }    			    
+		 	}
+
 		} else if(dim==3){
 			for(int codx=x0(grid, 0); codx < x1(grid, 0); codx++) {
 				for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++) {
@@ -148,7 +134,7 @@ unsigned long generate(MMSP::grid<dim,unsigned long >*& grid, int seeds, int nth
 	unsigned long timer=0;
 	if (dim == 2) {
 		int number_of_fields(seeds);
-		if (number_of_fields==0) number_of_fields = static_cast<int>(float(dim_x*dim_y)/(M_PI*.5*.5)); /* average grain is a disk of radius XXX
+		if (number_of_fields==0) number_of_fields = static_cast<int>(float(dim_x*dim_y)/(M_PI*1.*1.)); /* average grain is a disk of radius XXX
 , XXX cannot be smaller than 0.1, or BGQ will abort.*/
 		#ifdef MPI_VERSION
 		while (number_of_fields % np) --number_of_fields; 
@@ -592,23 +578,25 @@ template <int dim> void* flip_index_helper( void* s )
 			// attempt a spin flip
   
       double r = double(rand())/double(RAND_MAX);
+      /*
       if (dim == 2) {
         kT = 0.6634;
       } else if (dim == 3){
         kT = 5.58;
       }
-      
+      */
+      /*
       if (dE <= 0.0) {
         (*(ss->grid))(x) = spin2;
       }
       else if (r<exp(-dE/kT)) {
         (*(ss->grid))(x) = spin2;
       }
-      /*
+      */
       if (dE <= 0.0) {                                                                                                                                                              
         (*(ss->grid))(x) = spin2;                                                                                                                                                  
       }                                                                                                                                                                            
-      */
+      
 		}
 	}
 	pthread_exit(0);
@@ -946,7 +934,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			if(rank == 0) {
 		    	char orgpath[256];
 		    	char *path = getcwd(orgpath, 256);
-
+		    	
 			    int rc = chdir("/home/smartcoder/Documents/Developer/InverseGG/thermal/ColumnarGrowthTempInverse/");
 			    if (rc < 0) {
 			        std::cerr << "wrong working directory" << std::endl;
@@ -984,14 +972,20 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			    while(ss >> position[index] && ss >> pointtemp[index++]) {}
 			    //for(int tt = 0; tt < 151; tt++) std::cout << std::setw(10) << pointtemp[tt];
 			    //std::cout << "\n\n" << std::endl;
-			    for(int nd = 0; nd < 151; nd++) {
-			    	position_stack[nd] = position[nd];
-			    	pointtemp_stack[nd] = pointtemp[nd];
-			    }
+
+				int j = 0, len = 151;
+				for(int i = 1; i < len; i++) {
+					double prev = pointtemp[i-1];
+					double slope = (pointtemp[i] - pointtemp[i-1]) / (position[i] / domainLen  - position[i-1] / domainLen);
+					while(j < position[i] / domainLen * dim_x) {
+						tempFullSpace[j] = pointtemp[i-1] + ((double)j / dim_x - position[i-1] / domainLen) * slope;
+						j++;
+					}
+				}
+				tempFullSpace[dim_x - 1] = pointtemp[len - 1];
 			}
-			MPI_Bcast(position, 151, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-			MPI_Bcast(pointtemp, 151, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-			UpdateLocalTmp(grid, position, pointtemp, maxTemp, minTemp);
+			MPI_Bcast(tempFullSpace, dim_x, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+			UpdateLocalTmp(grid, tempFullSpace);
 		}
 
 
@@ -1063,27 +1057,28 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 	    MPI_Reduce(grains_along_line, grains_along_line_global, dim_x, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
 	    if(rank==0) { // do not fix the update time interval
-			int sum = 0;
-			double grains_along_line_global_smoothed[dim_x];
 			bool shouldUpdate = false;
 			int check_offset = 10;
-			if(mid_check <= grad_pos_start + check_offset) mid_check = grad_pos_end;
+			for(mid_check = grad_pos_end - 10; mid_check > grad_pos_start + 25; mid_check--) {
+				if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start + 20]) < std::max(2.0, 0.2*grains_along_line_global[grad_pos_start + 20])) {
+				//if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start]) <= 1) {
+					//int delta = max(1, (mid_check - grad_pos_start) / 10); // delta is a very important parameter to make columnar!
+					int delta = 1;
+					//int delta = (grad_pos_end - grad_pos_start) / 2;
+					grad_pos_start += delta;
+					shouldUpdate = true;
+				}
+			}
+
 			//std::cout << grains_along_line_global[grad_pos_start] << "  " << grains_along_line_global[mid_check] << std::endl;
 			
-			if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start]) < 0.1*grains_along_line_global[grad_pos_start]) {
-				int delta = max(1, (mid_check - grad_pos_start) / 10); // delta is a very important parameter to make columnar!
-				grad_pos_start += delta;
-				grad_pos_end += delta;
-				shouldUpdate = true;
-			}
-			mid_check--;
+			std::cout << grad_pos_start << "  " << mid_check << "  " << grains_along_line_global[mid_check] << "   " << grains_along_line_global[grad_pos_start + 20] << std::endl;
 
-			if(shouldUpdate) {
-
-				/*
+			if(shouldUpdate && update_count++ == update_period) {
+				update_count = 1;
 		    	char orgpath[256];
 		    	char *path = getcwd(orgpath, 256);
-
+		    	if(rank == 0) std::cout << "grad_pos_start: " << grad_pos_start << std::endl;
 			    int rc = chdir("/home/smartcoder/Documents/Developer/InverseGG/thermal/ColumnarGrowthTempInverse/");
 			    if (rc < 0) {
 			        std::cerr << "wrong working directory" << std::endl;
@@ -1122,27 +1117,34 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			    while(ss >> position[index] && ss >> pointtemp[index++]) {}
 			    //for(int tt = 0; tt < 151; tt++) std::cout << std::setw(10) << pointtemp[tt];
 			    //std::cout << "\n\n" << std::endl;
-			    */
-			    for(int nd = 0; nd < 151; nd++) {
-			    	position_stack[nd] = position[nd];
-			    	pointtemp_stack[nd] = pointtemp[nd];
-			    }
+
+
+				int j = 0, len = 151;
+				for(int i = 1; i < len; i++) {
+					double prev = pointtemp[i-1];
+					double slope = (pointtemp[i] - pointtemp[i-1]) / (position[i] / domainLen  - position[i-1] / domainLen);
+					while(j < position[i] / domainLen * dim_x) {
+						tempFullSpace[j] = pointtemp[i-1] + ((double)j / dim_x - position[i-1] / domainLen) * slope;
+						j++;
+					}
+				}
+				tempFullSpace[dim_x - 1] = pointtemp[len - 1];
 			}
 			else {
-			    for(int nd = 0; nd < 151; nd++) {
-			    	position[nd] = position_stack[nd];
-			    	pointtemp[nd] = pointtemp_stack[nd];
-			    }
+				if(shouldUpdate) {
+					for(int nd = dim_x - 1; nd >= 1 ; nd--) {
+						tempFullSpace[nd] = tempFullSpace[nd-1];
+					}
+				}
 			}
 		}
-		MPI_Bcast(position, 151, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-		MPI_Bcast(pointtemp, 151, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		MPI_Bcast(tempFullSpace, dim_x, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 		physical_time += t_inc;
 		if(rank == 0) std::cout << physical_time << std::endl;
 		UpdateLocalTmc(grid, t_inc);
 		//if((steps_finished + step) % 100 == 0) {
-		UpdateLocalTmp(grid, position, pointtemp, maxTemp, minTemp);
+		UpdateLocalTmp(grid, tempFullSpace);
 		//}
 
 		//if(rank == 0) std::cout << "grad_pos_start:" << grad_pos_start << "   grad_pos_end:" << grad_pos_end << std::endl;
@@ -1154,7 +1156,6 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 	    	}
 	    }
 	    */
-
 		update_timer += rdtsc()-start;
 	}//loop over step
 
