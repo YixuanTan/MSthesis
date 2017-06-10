@@ -38,8 +38,8 @@
 #include"output.cpp"
 
 // grid point dimension
-int dim_x = 500; 
-int dim_y = 200; 
+int dim_x = 1000; 
+int dim_y = 400; 
 int dim_z = 700; 
 
 int grad_pos_start = 0;
@@ -50,7 +50,7 @@ int delta;
 double domainLen = 10.0;
 int update_period = 5;
 int update_count = 0;
-double tempFullSpace[500];
+double tempFullSpace[1000];
 
 /* ------- Al-Cu alloy film
 double lambda = 3.75e-3; //This is fixed from Monte Carlo simulation, so do not change it.  here 10 um is the domain size, so each pixel is 10 nm, all length unit should be with um.
@@ -65,7 +65,7 @@ double R = 8.314;
 */
 
 // ---------Cu film
-double lambda = 1.1/4*1.0e-3;  //length unit is in mm, each pixel is 0.275 um
+double lambda = 1.1/3*1.0e-3;  //length unit is in mm, each pixel is 0.275 um
 double L_initial = 1.1e-3; 
 double L0 = 1.1e-3; 
 double K1 = 0.6263;
@@ -933,7 +933,8 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 		double pointtemp[151] = {0.0};
 
 		if (steps_finished + step == 0) {
-			if(rank == 0) {
+			if(false) {
+			//if(rank == 0) {
 		    	char orgpath[256];
 		    	char *path = getcwd(orgpath, 256);
 		    	
@@ -1045,16 +1046,11 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 		int grains_along_line_global[dim_x] = {0};
 		calculateGrainSizeDist(grid, grains_along_line);
 
-		/*
-		for(int i = 0; i < 4; i++) {
-			MPI::COMM_WORLD.Barrier();
-			if(rank == i) {
-				for(int i = 0; i < dim_x; i++) std::cout << 	grains_along_line[i] << " ";
-				std::cout << std::endl;
-			}
-			MPI::COMM_WORLD.Barrier();
+		if(rank == 0) {
+			for(int i = 0; i < dim_x; i++) std::cout << 400.0 / grains_along_line[i] << " ";
+			std::cout << std::endl;
 		}
-		*/
+	
 
 	    MPI_Reduce(grains_along_line, grains_along_line_global, dim_x, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
@@ -1076,7 +1072,8 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			
 			std::cout << grad_pos_start + check_offset << "  " << mid_check << "  " << grains_along_line_global[mid_check] << "   " << grains_along_line_global[grad_pos_start + check_offset] << std::endl;
 
-			if(shouldUpdate && update_count++ == update_period) {
+			if(false) {
+			//if(shouldUpdate && update_count++ == update_period) {
 				update_count = 1;
 		    	char orgpath[256];
 		    	char *path = getcwd(orgpath, 256);
