@@ -38,19 +38,19 @@
 #include"output.cpp"
 
 // grid point dimension
-int dim_x = 2000; 
-int dim_y = 800; 
+int dim_x = 500; 
+int dim_y = 200; 
 int dim_z = 700; 
 
 int grad_pos_start = 0;
 int grad_pos_end = 100;
 int mid_check = (grad_pos_end + grad_pos_start) / 2;
-int delta;
+int delta = 0;
 
 double domainLen = 10.0;
 int update_period = 5;
 int update_count = 0;
-double tempFullSpace[2000];
+double tempFullSpace[500];
 
 /* ------- Al-Cu alloy film
 double lambda = 3.75e-3; //This is fixed from Monte Carlo simulation, so do not change it.  here 10 um is the domain size, so each pixel is 10 nm, all length unit should be with um.
@@ -65,10 +65,10 @@ double R = 8.314;
 */
 
 // ---------Cu film
-double lambda = 1.1/5.6*1.0e-3;  //length unit is in mm, each pixel is 0.275 um
+double lambda = 1.1/1.0*1.0e-3;  //length unit is in mm, each pixel is 0.275 um
 double L_initial = 1.1e-3; 
 double L0 = 1.1e-3; 
-double K1 = 0.6263;
+double K1 = 0.6263;	
 double m = 2.0697;
 double n1 = 1.0/m;
 double Q = 146000; //fitted from Gangulee, A. ”Structure of electroplated and vapordeposited copper films. III. Recrystallization and grain growth.” Journal of Applied Physics 45.9 (1974): 3749-3756.
@@ -102,8 +102,8 @@ namespace MMSP {
 		    	for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
 		    		coords[1] = cody;
 		        	if (codx >= grad_pos_start && codx <= grad_pos_end) {
-		        		//grid.AccessToTmp(coords) = std::min(623.0, 473.0 + 500.0 / (grad_pos_end - grad_pos_start) * (grad_pos_end - codx));
-		        		grid.AccessToTmp(coords) = tempFullSpace[codx];
+		        		grid.AccessToTmp(coords) = std::min(823.0, 473.0 + 500.0 / (grad_pos_end - grad_pos_start) * (grad_pos_end - codx));
+		        		//grid.AccessToTmp(coords) = tempFullSpace[codx];
 		        	}
 		        	else grid.AccessToTmp(coords) = 473.0; 
 			    }    			    
@@ -136,7 +136,7 @@ unsigned long generate(MMSP::grid<dim,unsigned long >*& grid, int seeds, int nth
 	unsigned long timer=0;
 	if (dim == 2) {
 		int number_of_fields(seeds);
-		if (number_of_fields==0) number_of_fields = static_cast<int>(float(dim_x*dim_y)/(M_PI*4.*4.)); /* average grain is a disk of radius XXX
+		if (number_of_fields==0) number_of_fields = static_cast<int>(float(dim_x*dim_y)/(M_PI*.5*.5)); /* average grain is a disk of radius XXX
 , XXX cannot be smaller than 0.1, or BGQ will abort.*/
 		#ifdef MPI_VERSION
 		while (number_of_fields % np) --number_of_fields; 
@@ -1061,20 +1061,23 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			if(mid_check <= grad_pos_start + check_offset) mid_check = grad_pos_end;
 
 			//if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start + check_offset]) < 0.1*grains_along_line_global[grad_pos_start + check_offset]) {
-			if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start + check_offset]) < std::max(2.0, 0.1*grains_along_line_global[grad_pos_start + check_offset])) {		
-				delta = 1; // max(1, (mid_check - grad_pos_start) / 10); // delta is a very important parameter to make columnar!
-				grad_pos_start += delta;
-				grad_pos_end += delta;
-				shouldUpdate = true;
+			if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start + check_offset]) < std::max(2.0, 0.1*grains_along_line_global[grad_pos_start])) {		
+				delta += 1; // max(1, (mid_check - grad_pos_start) / 10); // delta is a very important parameter to make columnar!
+				if(delta = 100) {
+					grad_pos_start += 1;
+					grad_pos_end += 1;
+					shouldUpdate = true;
+					delta = 0;
+				}
 			}
 			mid_check--;
 
 			//std::cout << grains_along_line_global[grad_pos_start] << "  " << grains_along_line_global[mid_check] << std::endl;
 			
-			std::cout << grad_pos_start + check_offset << "  " << mid_check << "  " << grains_along_line_global[mid_check] << "   " << grains_along_line_global[grad_pos_start + check_offset] << std::endl;
+			std::cout << grad_pos_start + check_offset << "  " << mid_check << "  " << grains_along_line_global[mid_check] << "   " << grains_along_line_global[grad_pos_start] << std::endl;
 
-			//if(false) {
-			if(shouldUpdate && update_count++ == update_period) {
+			if(false) {
+			//if(shouldUpdate && update_count++ == update_period) {
 				update_count = 1;
 		    	char orgpath[256];
 		    	char *path = getcwd(orgpath, 256);
