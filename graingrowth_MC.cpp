@@ -1103,7 +1103,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			//if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start + check_offset]) < std::max(2.0, 0.1*grains_along_line_global[grad_pos_start])) {		
 				//delta = max(1, (mid_check - grad_pos_start - check_offset)); // delta is a very important parameter to make columnar!
 				//delta = 1; 
-			if(size_along_horizon > 2.0 * size_along_vert) {
+			if(size_along_horizon > 3.0 * size_along_vert) {
 				delta = (mid_check - grad_pos_start) / 2;
 				grad_pos_start += delta;
 				grad_pos_end += delta;
