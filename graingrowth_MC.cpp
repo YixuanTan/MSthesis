@@ -38,19 +38,19 @@
 #include"output.cpp"
 
 // grid point dimension
-int dim_x = 500; 
-int dim_y = 200; 
+int dim_x = 1000; 
+int dim_y = 500; 
 int dim_z = 700; 
 
-int grad_pos_start = 50;
-int grad_pos_end = 80;
+int grad_pos_start = 00;
+int grad_pos_end = 50;
 int mid_check = (grad_pos_end + grad_pos_start) / 2;
 int delta = 0;
 
 double domainLen = 10.0;
-int update_period = 5;
+int update_period = 3;
 int update_count = 0;
-double tempFullSpace[500];
+double tempFullSpace[1000];
 
 /* ------- Al-Cu alloy film
 double lambda = 3.75e-3; //This is fixed from Monte Carlo simulation, so do not change it.  here 10 um is the domain size, so each pixel is 10 nm, all length unit should be with um.
@@ -65,7 +65,7 @@ double R = 8.314;
 */
 
 // ---------Cu film
-double lambda = 1.1/1.0*1.0e-3;  //length unit is in mm, each pixel is 0.275 um
+double lambda = 1.1/3.0*1.0e-3;  //length unit is in mm, each pixel is 0.275 um
 double L_initial = 1.1e-3; 
 double L0 = 1.1e-3; 
 double K1 = 0.6263;	
@@ -136,7 +136,7 @@ unsigned long generate(MMSP::grid<dim,unsigned long >*& grid, int seeds, int nth
 	unsigned long timer=0;
 	if (dim == 2) {
 		int number_of_fields(seeds);
-		if (number_of_fields==0) number_of_fields = static_cast<int>(float(dim_x*dim_y)/(M_PI*.5*.5)); /* average grain is a disk of radius XXX
+		if (number_of_fields==0) number_of_fields = static_cast<int>(float(dim_x*dim_y)/(M_PI*2.0*2.0)); /* average grain is a disk of radius XXX
 , XXX cannot be smaller than 0.1, or BGQ will abort.*/
 		#ifdef MPI_VERSION
 		while (number_of_fields % np) --number_of_fields; 
@@ -1085,9 +1085,11 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 
 
 	    	long long sum_grain_along_horizon = 0, sum_intercept_len = 0;
+	    	int count_scan = 0;
 	    	for(int c_dir_idx = 0; c_dir_idx < dim_y; c_dir_idx += 10) {
 	    		sum_grain_along_horizon += columnar_direction_grains_global[c_dir_idx];
 	    		sum_intercept_len += (grad_pos_end - grad_pos_start + 1 - 10);
+	    		count_scan++;
 	    	}
 	    	double size_along_horizon = 1.0 * sum_intercept_len / sum_grain_along_horizon;
 	    	int mid_check = grad_pos_start + (grad_pos_end - grad_pos_start) / 2;
@@ -1103,7 +1105,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			//if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start + check_offset]) < std::max(2.0, 0.1*grains_along_line_global[grad_pos_start])) {		
 				//delta = max(1, (mid_check - grad_pos_start - check_offset)); // delta is a very important parameter to make columnar!
 				//delta = 1; 
-			if(size_along_horizon > 3.0 * size_along_vert) {
+			if(size_along_horizon > 3.0 * size_along_vert || sum_grain_along_horizon <= count_scan) {
 				delta = (mid_check - grad_pos_start) / 2;
 				grad_pos_start += delta;
 				grad_pos_end += delta;
@@ -1114,8 +1116,63 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			//std::cout << grains_along_line_global[grad_pos_start] << "  " << grains_along_line_global[mid_check] << std::endl;
 			
 			//std::cout << grad_pos_start + check_offset << "  " << mid_check << "  " << grains_along_line_global[mid_check] << "   " << grains_along_line_global[grad_pos_start] << std::endl;
+			if(shouldUpdate && update_count++ == update_period) {
+				update_count = 1;
+		    	char orgpath[256];
+		    	char *path = getcwd(orgpath, 256);
+		    	if(rank == 0) std::cout << "grad_pos_start: " << grad_pos_start << std::endl;
+			    int rc = chdir("/home/smartcoder/Documents/Developer/InverseGG/thermal/ColumnarGrowthTempInverse/");
+			    if (rc < 0) {
+			        std::cerr << "wrong working directory" << std::endl;
+			    }
 
-			if(shouldUpdate) {
+				std::string cmd = "./driver";
+				cmd += " " + std::to_string(grad_pos_start * domainLen / dim_x) + " " + std::to_string(grad_pos_end * domainLen / dim_x);
+			    char buffer[128];
+			    std::string result = "";
+			    //std::cout << "cmd is  " << cmd << std::endl;
+			    FILE* pipe = popen(cmd.c_str(), "r");
+			    if (!pipe) throw std::runtime_error("popen() failed!");
+			    try {
+			        while (!feof(pipe)) {
+			            if (fgets(buffer, 128, pipe) != NULL) {
+			                result += buffer;
+			                //std::cout << "buffer is " << buffer << std::endl;
+			            }
+			        }
+			    } catch (...) {
+			        pclose(pipe);
+			        throw;
+			    }
+			    pclose(pipe);
+
+			    rc = chdir(orgpath);
+			    if (rc < 0) {
+			        std::cerr << "switch back working directory failed" << std::endl;
+			    }
+				
+
+			    //std::cout << "result is \n" << result << std::endl;
+			    std::stringstream ss(result);
+			    int index = 0; 
+			    //std::cout << "ss is \n" << ss.str() << std::endl;
+			    while(ss >> position[index] && ss >> pointtemp[index++]) {}
+			    //for(int tt = 0; tt < 151; tt++) std::cout << std::setw(10) << pointtemp[tt];
+			    //std::cout << "\n\n" << std::endl;
+
+
+				int j = 0, len = 151;
+				for(int i = 1; i < len; i++) {
+					double prev = pointtemp[i-1];
+					double slope = (pointtemp[i] - pointtemp[i-1]) / (position[i] / domainLen  - position[i-1] / domainLen);
+					while(j < position[i] / domainLen * dim_x) {
+						tempFullSpace[j] = pointtemp[i-1] + ((double)j / dim_x - position[i-1] / domainLen) * slope;
+						j++;
+					}
+				}
+				tempFullSpace[dim_x - 1] = pointtemp[len - 1];
+			}
+			else if(shouldUpdate) {
 				for(int nd = dim_x - 1; nd >= 0 ; nd--) {
 					if(nd-delta >= 0) tempFullSpace[nd] = tempFullSpace[max(nd-delta, 0)];
 					else tempFullSpace[nd] = 473.0;
