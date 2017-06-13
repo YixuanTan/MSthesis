@@ -42,8 +42,8 @@ int dim_x = 500;
 int dim_y = 200; 
 int dim_z = 700; 
 
-int grad_pos_start = 0;
-int grad_pos_end = 100;
+int grad_pos_start = 50;
+int grad_pos_end = 80;
 int mid_check = (grad_pos_end + grad_pos_start) / 2;
 int delta = 0;
 
@@ -102,8 +102,8 @@ namespace MMSP {
 		    	for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
 		    		coords[1] = cody;
 		        	if (codx >= grad_pos_start && codx <= grad_pos_end) {
-		        		grid.AccessToTmp(coords) = std::min(823.0, 473.0 + 500.0 / (grad_pos_end - grad_pos_start) * (grad_pos_end - codx));
-		        		//grid.AccessToTmp(coords) = tempFullSpace[codx];
+		        		//grid.AccessToTmp(coords) = std::min(623.0, 473.0 + 500.0 / (grad_pos_end - grad_pos_start) * (grad_pos_end - codx));
+		        		grid.AccessToTmp(coords) = tempFullSpace[codx];
 		        	}
 		        	else grid.AccessToTmp(coords) = 473.0; 
 			    }    			    
@@ -717,6 +717,26 @@ template <int dim> void calculateGrainSizeDist(MMSP::grid<dim, unsigned long>& g
 	}
 }
 
+template <int dim> void verifyColumnar(MMSP::grid<dim, unsigned long>& grid, int columnar_direction_grains[]){
+	int lowbound = grad_pos_start, upbound = grad_pos_end - 10;
+	if(x0(grid, 0) > upbound || x1(grid, 0) < lowbound) return;
+	for(int cody = x0(grid, 1); cody < x1(grid, 1); cody++) { // x direction is where temperature varies		
+		columnar_direction_grains[cody] = 0;
+		int codx = max(lowbound, x0(grid, 0));
+		long long prevgid = -1;
+		while(codx <= upbound && codx < x1(grid, 0)) {
+			vector<int> coords(dim,0);
+			coords[0] = codx, coords[1] = cody, coords[2] = 0;
+			if(prevgid == -1 || prevgid != grid(coords)) {
+				columnar_direction_grains[cody]++;
+			}
+			prevgid = grid(coords);
+			codx++;
+		}
+		if(columnar_direction_grains[cody] != 0) columnar_direction_grains[cody]--;
+	}
+}
+
 template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, int steps, long int steps_finished, int nthreads, int step_to_nonuniform, long double &physical_time, double velInverse, double maxTemp, double minTemp, double plat, double range) {
 	unsigned long start = rdtsc();
 
@@ -1044,7 +1064,10 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 
 		int grains_along_line[dim_x] = {0};
 		int grains_along_line_global[dim_x] = {0};
+		int columnar_direction_grains[dim_y] = {0};
+		int columnar_direction_grains_global[dim_y] = {0};
 		calculateGrainSizeDist(grid, grains_along_line);
+		verifyColumnar(grid, columnar_direction_grains);
 
 		/*
 		if(rank == 0) {
@@ -1054,92 +1077,51 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 		*/
 
 	    MPI_Reduce(grains_along_line, grains_along_line_global, dim_x, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+	    MPI_Reduce(columnar_direction_grains, columnar_direction_grains_global, dim_y, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
 	    if(rank==0) { // do not fix the update time interval
+	    	//for(int gs : columnar_direction_grains_global) std::cout << gs << " ";
+    		//std::cout << std::endl;
+
+
+	    	long long sum_grain_along_horizon = 0, sum_intercept_len = 0;
+	    	for(int c_dir_idx = 0; c_dir_idx < dim_y; c_dir_idx += 10) {
+	    		sum_grain_along_horizon += columnar_direction_grains_global[c_dir_idx];
+	    		sum_intercept_len += (grad_pos_end - grad_pos_start + 1 - 10);
+	    	}
+	    	double size_along_horizon = 1.0 * sum_intercept_len / sum_grain_along_horizon;
+	    	int mid_check = grad_pos_start + (grad_pos_end - grad_pos_start) / 2;
+	    	double size_along_vert = 1.0 * dim_y / grains_along_line_global[mid_check];
+
 			bool shouldUpdate = false;
-			int check_offset = 10;
-			if(mid_check <= grad_pos_start + check_offset) mid_check = grad_pos_end;
+
+			std::cout << size_along_horizon << "  " << size_along_vert << std::endl;
+			//int check_offset = 10;
+			//if(mid_check <= grad_pos_start + 2*check_offset) mid_check = grad_pos_end;
 
 			//if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start + check_offset]) < 0.1*grains_along_line_global[grad_pos_start + check_offset]) {
-			if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start + check_offset]) < std::max(2.0, 0.1*grains_along_line_global[grad_pos_start])) {		
-				delta += 1; // max(1, (mid_check - grad_pos_start) / 10); // delta is a very important parameter to make columnar!
-				if(delta = 100) {
-					grad_pos_start += 1;
-					grad_pos_end += 1;
-					shouldUpdate = true;
-					delta = 0;
-				}
+			//if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start + check_offset]) < std::max(2.0, 0.1*grains_along_line_global[grad_pos_start])) {		
+				//delta = max(1, (mid_check - grad_pos_start - check_offset)); // delta is a very important parameter to make columnar!
+				//delta = 1; 
+			if(size_along_horizon > 2.0 * size_along_vert) {
+				delta = (mid_check - grad_pos_start) / 2;
+				grad_pos_start += delta;
+				grad_pos_end += delta;
+				shouldUpdate = true;
 			}
-			mid_check--;
+			//mid_check--;
 
 			//std::cout << grains_along_line_global[grad_pos_start] << "  " << grains_along_line_global[mid_check] << std::endl;
 			
-			std::cout << grad_pos_start + check_offset << "  " << mid_check << "  " << grains_along_line_global[mid_check] << "   " << grains_along_line_global[grad_pos_start] << std::endl;
+			//std::cout << grad_pos_start + check_offset << "  " << mid_check << "  " << grains_along_line_global[mid_check] << "   " << grains_along_line_global[grad_pos_start] << std::endl;
 
-			if(false) {
-			//if(shouldUpdate && update_count++ == update_period) {
-				update_count = 1;
-		    	char orgpath[256];
-		    	char *path = getcwd(orgpath, 256);
-		    	if(rank == 0) std::cout << "grad_pos_start: " << grad_pos_start << std::endl;
-			    int rc = chdir("/home/smartcoder/Documents/Developer/InverseGG/thermal/ColumnarGrowthTempInverse/");
-			    if (rc < 0) {
-			        std::cerr << "wrong working directory" << std::endl;
-			    }
-
-				std::string cmd = "./driver";
-				cmd += " " + std::to_string(grad_pos_start * domainLen / dim_x) + " " + std::to_string(grad_pos_end * domainLen / dim_x);
-			    char buffer[128];
-			    std::string result = "";
-			    //std::cout << "cmd is  " << cmd << std::endl;
-			    FILE* pipe = popen(cmd.c_str(), "r");
-			    if (!pipe) throw std::runtime_error("popen() failed!");
-			    try {
-			        while (!feof(pipe)) {
-			            if (fgets(buffer, 128, pipe) != NULL) {
-			                result += buffer;
-			                //std::cout << "buffer is " << buffer << std::endl;
-			            }
-			        }
-			    } catch (...) {
-			        pclose(pipe);
-			        throw;
-			    }
-			    pclose(pipe);
-
-			    rc = chdir(orgpath);
-			    if (rc < 0) {
-			        std::cerr << "switch back working directory failed" << std::endl;
-			    }
-				
-
-			    //std::cout << "result is \n" << result << std::endl;
-			    std::stringstream ss(result);
-			    int index = 0; 
-			    //std::cout << "ss is \n" << ss.str() << std::endl;
-			    while(ss >> position[index] && ss >> pointtemp[index++]) {}
-			    //for(int tt = 0; tt < 151; tt++) std::cout << std::setw(10) << pointtemp[tt];
-			    //std::cout << "\n\n" << std::endl;
-
-
-				int j = 0, len = 151;
-				for(int i = 1; i < len; i++) {
-					double prev = pointtemp[i-1];
-					double slope = (pointtemp[i] - pointtemp[i-1]) / (position[i] / domainLen  - position[i-1] / domainLen);
-					while(j < position[i] / domainLen * dim_x) {
-						tempFullSpace[j] = pointtemp[i-1] + ((double)j / dim_x - position[i-1] / domainLen) * slope;
-						j++;
-					}
-				}
-				tempFullSpace[dim_x - 1] = pointtemp[len - 1];
-			}
-			else {
-				if(shouldUpdate) {
-					for(int nd = dim_x - 1; nd >= 0 ; nd--) {
-						tempFullSpace[nd] = tempFullSpace[max(nd-delta, 0)];
-					}
+			if(shouldUpdate) {
+				for(int nd = dim_x - 1; nd >= 0 ; nd--) {
+					if(nd-delta >= 0) tempFullSpace[nd] = tempFullSpace[max(nd-delta, 0)];
+					else tempFullSpace[nd] = 473.0;
 				}
 			}
+
 		}
 
 		MPI_Bcast(&grad_pos_start, 1, MPI_INT, 0, MPI_COMM_WORLD);
