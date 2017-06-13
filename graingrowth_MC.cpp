@@ -50,7 +50,7 @@ int delta = 0;
 double domainLen = 10.0;
 int update_period = 3;
 int update_count = 0;
-double tempFullSpace[1000];
+double tempFullSpace[1000] = {100.0};
 
 /* ------- Al-Cu alloy film
 double lambda = 3.75e-3; //This is fixed from Monte Carlo simulation, so do not change it.  here 10 um is the domain size, so each pixel is 10 nm, all length unit should be with um.
@@ -736,6 +736,188 @@ template <int dim> void verifyColumnar(MMSP::grid<dim, unsigned long>& grid, int
 		if(columnar_direction_grains[cody] != 0) columnar_direction_grains[cody]--;
 	}
 }
+template <int dim> void calCulateGrainSize1(MMSP::grid<dim, unsigned long>& grid, unsigned long &number_of_grains){
+   vector<int> coords (dim,0);
+   if(dim==2){
+      if(0.08*g1(grid, 0)>=x0(grid, 0) && 0.08*g1(grid, 0)<x1(grid, 0)){
+        unsigned long index_record = -1;
+        for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
+          coords[0] = 0.08*g1(grid, 0);
+          coords[1] = cody;
+          if(grid(coords)!=index_record){
+            index_record = grid(coords);
+            number_of_grains = number_of_grains + 1;       
+          }
+        }
+        if(x1(grid, 1) < g1(grid, 1)){
+          coords[1] = x1(grid, 1);
+          if(grid(coords) == index_record && number_of_grains != 0){
+            number_of_grains = number_of_grains - 1; 
+          }
+        }
+      }
+      if(0.16*g1(grid, 0)>=x0(grid, 0) && 0.16*g1(grid, 0)<x1(grid, 0)){
+        unsigned long index_record = -1;
+        for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
+          coords[0] = 0.16*g1(grid, 0);
+          coords[1] = cody;
+          if(grid(coords)!=index_record){
+            index_record = grid(coords);
+            number_of_grains = number_of_grains + 1;       
+          }
+        }
+        if(x1(grid, 1) < g1(grid, 1)){
+          coords[1] = x1(grid, 1);
+          if(grid(coords) == index_record && number_of_grains != 0){
+            number_of_grains = number_of_grains - 1; 
+          }
+        }
+      }
+      if(0.24*g1(grid, 0)>=x0(grid, 0) && 0.24*g1(grid, 0)<x1(grid, 0)){
+        unsigned long index_record = -1;
+        for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
+          coords[0] = 0.24*g1(grid, 0);
+          coords[1] = cody;
+          if(grid(coords)!=index_record){
+            index_record = grid(coords);
+            number_of_grains = number_of_grains + 1;       
+          }
+        }
+        if(x1(grid, 1) < g1(grid, 1)){
+          coords[1] = x1(grid, 1);
+          if(grid(coords) == index_record && number_of_grains != 0){
+            number_of_grains = number_of_grains - 1; 
+          }
+        }
+      }
+      if(0.32*g1(grid, 0)>=x0(grid, 0) && 0.32*g1(grid, 0)<x1(grid, 0)){
+        unsigned long index_record = -1;
+        for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
+          coords[0] = 0.32*g1(grid, 0);
+          coords[1] = cody;
+          if(grid(coords)!=index_record){
+            index_record = grid(coords);
+            number_of_grains = number_of_grains + 1;       
+          }
+        }
+        if(x1(grid, 1) < g1(grid, 1)){
+          coords[1] = x1(grid, 1);
+          if(grid(coords) == index_record && number_of_grains != 0){
+            number_of_grains = number_of_grains - 1; 
+          }
+        }
+      }
+      if(0.40*g1(grid, 0)>=x0(grid, 0) && 0.40*g1(grid, 0)<x1(grid, 0)){
+        unsigned long index_record = -1;
+        for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
+          coords[0] = 0.40*g1(grid, 0);
+          coords[1] = cody;
+          if(grid(coords)!=index_record){
+            index_record = grid(coords);
+            number_of_grains = number_of_grains + 1;       
+          }
+        }
+        if(x1(grid, 1) < g1(grid, 1)){
+          coords[1] = x1(grid, 1);
+          if(grid(coords) == index_record && number_of_grains != 0){
+            number_of_grains = number_of_grains - 1; 
+          }
+        }
+      }
+   }
+}
+
+template <int dim> void calCulateGrainSize2(MMSP::grid<dim, unsigned long>& grid, unsigned long &number_of_grains){
+   vector<int> coords (dim,0);
+   if(dim==2){
+      if(0.60*g1(grid, 0)>=x0(grid, 0) && 0.60*g1(grid, 0)<x1(grid, 0)){
+        unsigned long index_record = -1;
+        for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
+          coords[0] = 0.60*g1(grid, 0);
+          coords[1] = cody;
+          if(grid(coords)!=index_record){
+            index_record = grid(coords);
+            number_of_grains = number_of_grains + 1;       
+          }
+        }
+        if(x1(grid, 1) < g1(grid, 1)){
+          coords[1] = x1(grid, 1);
+          if(grid(coords) == index_record && number_of_grains != 0){
+            number_of_grains = number_of_grains - 1; 
+          }
+        }
+      }
+      if(0.68*g1(grid, 0)>=x0(grid, 0) && 0.68*g1(grid, 0)<x1(grid, 0)){
+        unsigned long index_record = -1;
+        for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
+          coords[0] = 0.68*g1(grid, 0);
+          coords[1] = cody;
+          if(grid(coords)!=index_record){
+            index_record = grid(coords);
+            number_of_grains = number_of_grains + 1;       
+          }
+        }
+        if(x1(grid, 1) < g1(grid, 1)){
+          coords[1] = x1(grid, 1);
+          if(grid(coords) == index_record && number_of_grains != 0){
+            number_of_grains = number_of_grains - 1; 
+          }
+        }
+      }
+      if(0.76*g1(grid, 0)>=x0(grid, 0) && 0.76*g1(grid, 0)<x1(grid, 0)){
+        unsigned long index_record = -1;
+        for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
+          coords[0] = 0.76*g1(grid, 0);
+          coords[1] = cody;
+          if(grid(coords)!=index_record){
+            index_record = grid(coords);
+            number_of_grains = number_of_grains + 1;       
+          }
+        }
+        if(x1(grid, 1) < g1(grid, 1)){
+          coords[1] = x1(grid, 1);
+          if(grid(coords) == index_record && number_of_grains != 0){
+            number_of_grains = number_of_grains - 1; 
+          }
+        }
+      }
+      if(0.84*g1(grid, 0)>=x0(grid, 0) && 0.84*g1(grid, 0)<x1(grid, 0)){
+        unsigned long index_record = -1;
+        for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
+          coords[0] = 0.84*g1(grid, 0);
+          coords[1] = cody;
+          if(grid(coords)!=index_record){
+            index_record = grid(coords);
+            number_of_grains = number_of_grains + 1;       
+          }
+        }
+        if(x1(grid, 1) < g1(grid, 1)){
+          coords[1] = x1(grid, 1);
+          if(grid(coords) == index_record && number_of_grains != 0){
+            number_of_grains = number_of_grains - 1; 
+          }
+        }
+      }
+      if(0.92*g1(grid, 0)>=x0(grid, 0) && 0.92*g1(grid, 0)<x1(grid, 0)){
+        unsigned long index_record = -1;
+        for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
+          coords[0] = 0.92*g1(grid, 0);
+          coords[1] = cody;
+          if(grid(coords)!=index_record){
+            index_record = grid(coords);
+            number_of_grains = number_of_grains + 1;       
+          }
+        }
+        if(x1(grid, 1) < g1(grid, 1)){
+          coords[1] = x1(grid, 1);
+          if(grid(coords) == index_record && number_of_grains != 0){
+            number_of_grains = number_of_grains - 1; 
+          }
+        }
+      }
+   }
+}
+
 
 template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, int steps, long int steps_finished, int nthreads, int step_to_nonuniform, long double &physical_time, double velInverse, double maxTemp, double minTemp, double plat, double range) {
 	unsigned long start = rdtsc();
@@ -951,9 +1133,10 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 	for (int step=0; step<steps; step++){
 		double position[151] = {0.0};
 		double pointtemp[151] = {0.0};
-
+/*
 		if (steps_finished + step == 0) {
 			//if(false) {
+
 			if(rank == 0) {
 		    	char orgpath[256];
 		    	char *path = getcwd(orgpath, 256);
@@ -1010,7 +1193,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			MPI_Bcast(tempFullSpace, dim_x, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 			UpdateLocalTmp(grid, tempFullSpace);
 		}
-
+*/
 
 	    double tmc_at_PdenominatorMax = 0.0;
 	    double tmp_at_PdenominatorMax = 0.0;
@@ -1078,7 +1261,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 
 	    MPI_Reduce(grains_along_line, grains_along_line_global, dim_x, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 	    MPI_Reduce(columnar_direction_grains, columnar_direction_grains_global, dim_y, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-
+/*
 	    if(rank==0) { // do not fix the update time interval
 	    	//for(int gs : columnar_direction_grains_global) std::cout << gs << " ";
     		//std::cout << std::endl;
@@ -1180,14 +1363,14 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			}
 
 		}
-
+*/
 		MPI_Bcast(&grad_pos_start, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&grad_pos_end, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
 		MPI_Bcast(tempFullSpace, dim_x, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 		physical_time += t_inc;
-		if(rank == 0) std::cout << physical_time << std::endl;
+		//if(rank == 0) std::cout << physical_time << std::endl;
 		UpdateLocalTmc(grid, t_inc);
 		//if((steps_finished + step) % 100 == 0) {
 		UpdateLocalTmp(grid, tempFullSpace);
@@ -1202,6 +1385,30 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 	    	}
 	    }
 	    */
+
+
+    unsigned long number_of_grains = 0;
+    calCulateGrainSize1(grid, number_of_grains);
+    unsigned long total_number_of_grains = 0;
+    MPI::COMM_WORLD.Allreduce(&number_of_grains, &total_number_of_grains, 1, MPI_UNSIGNED_LONG, MPI_SUM);
+    MPI::COMM_WORLD.Barrier();
+
+    double grain_size1 = 5.0 * dim_y / total_number_of_grains;
+
+    number_of_grains = 0;
+    calCulateGrainSize2(grid, number_of_grains);
+    total_number_of_grains = 0;
+    MPI::COMM_WORLD.Allreduce(&number_of_grains, &total_number_of_grains, 1, MPI_UNSIGNED_LONG, MPI_SUM);
+    MPI::COMM_WORLD.Barrier();
+
+    double grain_size2 = 5.0 * dim_y / total_number_of_grains;
+
+if(rank==0)
+std::cout<< "  "<<physical_time<< "  "<<grain_size1<<"  "<<grain_size2<<std::endl;
+
+
+
+
 
 		update_timer += rdtsc()-start;
 	}//loop over step
