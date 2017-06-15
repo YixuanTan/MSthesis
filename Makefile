@@ -64,6 +64,9 @@ mmsp2vti200orient: mmsp2vti_200orient.cpp $(core)
 
 mmsp2png: mmsp2png.cpp $(core)
 	$(compiler) $(flags) $< -o $@ -lz -lpng
+	
+mmsp2xyz: mmsp2xyz.cpp $(core)
+	$(compiler) $(flags) $< -o $@ -lz
 
 clean:
 	rm -rf graingrowth.out parallel_GG.out parallel_MC.out q_GG.out q_MC.out wrongendian.out
