@@ -42,7 +42,7 @@ int dim_x = 1000;
 int dim_y = 500; 
 int dim_z = 700; 
 
-int grad_pos_start = 00;
+int grad_pos_start = 20;
 int grad_pos_end = 50;
 int mid_check = (grad_pos_end + grad_pos_start) / 2;
 int delta = 0;
@@ -65,11 +65,11 @@ double R = 8.314;
 */
 
 // ---------Cu film
-double lambda = 1.1/2.9*1.0e-3;  //length unit is in mm, each pixel is 0.275 um
-double L_initial = 1.1e-3; 
-double L0 = 1.1e-3; 
-double K1 = 0.7498; // 0.6263;	
-double m = 2.2867; // 2.0697;
+double lambda = 1*1.0e-3;  //length unit is in mm, each pixel is 0.275 um
+double L_initial = 40*1.0e-3; // L_initial is for "starting" size in simulation, with physical unit
+double L0 = 40*1.0e-3;  // L0 is for "starting" size in experiment, with physical unit
+double K1 = 0.7498; // 0.6263; // 
+double m = 2.2867; // 2.0697; // 
 double n1 = 1.0/m;
 double Q = 146000; //fitted from Gangulee, A. ”Structure of electroplated and vapordeposited copper films. III. Recrystallization and grain growth.” Journal of Applied Physics 45.9 (1974): 3749-3756.
 double n = 2; 
@@ -101,11 +101,12 @@ namespace MMSP {
 				coords[0] = codx;
 		    	for(int cody=x0(grid, 1); cody < x1(grid, 1); cody++){
 		    		coords[1] = cody;
+		    		
 		        	if (codx >= grad_pos_start && codx <= grad_pos_end) {
 		        		//grid.AccessToTmp(coords) = std::min(623.0, 473.0 + 500.0 / (grad_pos_end - grad_pos_start) * (grad_pos_end - codx));
 		        		grid.AccessToTmp(coords) = tempFullSpace[codx];
 		        	}
-		        	else grid.AccessToTmp(coords) = 473.0; 
+		        	else 	grid.AccessToTmp(coords) = 473.0; 
 			    }    			    
 		 	}
 
@@ -1071,7 +1072,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 
 		/*
 		if(rank == 0) {
-			for(int i = 0; i < dim_x; i++) std::cout << 800.0 / grains_along_line[i] << " ";
+			for(int i = 0; i < dim_x; i++) std::cout << 500.0 / grains_along_line[i] << " ";
 			std::cout << std::endl;
 		}
 		*/
@@ -1097,7 +1098,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 
 			bool shouldUpdate = false;
 
-			std::cout << size_along_horizon << "  " << size_along_vert << std::endl;
+			//std::cout << size_along_horizon << "  " << size_along_vert << std::endl;
 			//int check_offset = 10;
 			//if(mid_check <= grad_pos_start + 2*check_offset) mid_check = grad_pos_end;
 
@@ -1116,7 +1117,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			//std::cout << grains_along_line_global[grad_pos_start] << "  " << grains_along_line_global[mid_check] << std::endl;
 			
 			//std::cout << grad_pos_start + check_offset << "  " << mid_check << "  " << grains_along_line_global[mid_check] << "   " << grains_along_line_global[grad_pos_start] << std::endl;
-			if(shouldUpdate && update_count++ == update_period) {
+			/*if(shouldUpdate && update_count++ == update_period) {
 				update_count = 1;
 		    	char orgpath[256];
 		    	char *path = getcwd(orgpath, 256);
@@ -1172,7 +1173,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 				}
 				tempFullSpace[dim_x - 1] = pointtemp[len - 1];
 			}
-			else if(shouldUpdate) {
+			else */if(shouldUpdate) {
 				for(int nd = dim_x - 1; nd >= 0 ; nd--) {
 					if(nd-delta >= 0) tempFullSpace[nd] = tempFullSpace[max(nd-delta, 0)];
 					else tempFullSpace[nd] = 473.0;
@@ -1187,7 +1188,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 		MPI_Bcast(tempFullSpace, dim_x, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 		physical_time += t_inc;
-		if(rank == 0) std::cout << physical_time << std::endl;
+		if(rank == 0) std::cout << physical_time / 3600 << std::endl;
 		UpdateLocalTmc(grid, t_inc);
 		//if((steps_finished + step) % 100 == 0) {
 		UpdateLocalTmp(grid, tempFullSpace);
