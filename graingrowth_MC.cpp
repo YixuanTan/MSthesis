@@ -38,19 +38,19 @@
 #include"output.cpp"
 
 // grid point dimension
-int dim_x = 1000; 
-int dim_y = 500; 
+int dim_x = 10000; 
+int dim_y = 1000; 
 int dim_z = 700; 
 
-int grad_pos_start = 20;
-int grad_pos_end = 50;
+int grad_pos_start = 0;
+int grad_pos_end = 500;
 int mid_check = (grad_pos_end + grad_pos_start) / 2;
 int delta = 0;
 
 double domainLen = 10.0;
 int update_period = 3;
 int update_count = 0;
-double tempFullSpace[1000];
+double tempFullSpace[10000];
 
 /* ------- Al-Cu alloy film
 double lambda = 3.75e-3; //This is fixed from Monte Carlo simulation, so do not change it.  here 10 um is the domain size, so each pixel is 10 nm, all length unit should be with um.
@@ -66,8 +66,8 @@ double R = 8.314;
 
 // ---------Cu film
 double lambda = 1*1.0e-3;  //length unit is in mm, each pixel is 0.275 um
-double L_initial = 40*1.0e-3; // L_initial is for "starting" size in simulation, with physical unit
-double L0 = 40*1.0e-3;  // L0 is for "starting" size in experiment, with physical unit
+double L_initial = 4*1.0e-3; // L_initial is for "starting" size in simulation, with physical unit
+double L0 = 4*1.0e-3;  // L0 is for "starting" size in experiment, with physical unit
 double K1 = 0.7498; // 0.6263; // 
 double m = 2.2867; // 2.0697; // 
 double n1 = 1.0/m;
