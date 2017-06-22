@@ -43,7 +43,7 @@ int dim_y = 1000;
 int dim_z = 700; 
 
 int grad_pos_start = 0;
-int grad_pos_end = 500;
+int grad_pos_end = 2000;
 int mid_check = (grad_pos_end + grad_pos_start) / 2;
 int delta = 0;
 
@@ -82,7 +82,7 @@ namespace MMSP {
 
   	template <int dim> void UpdateLocalTmp(MMSP::grid<dim, unsigned long>& grid, double tempFullSpace[]){
 		//int rank = MPI::COMM_WORLD.Get_rank();
-		//if(rank == 0) for(int tt = 0; tt < 151; tt++) std::cout << pointtemp[tt] << std::endl;
+		//if(rank == 0) for(int tt = 0; tt < 152; tt++) std::cout << pointtemp[tt] << std::endl;
 
 		int rank = MPI::COMM_WORLD.Get_rank();
 		
@@ -950,12 +950,13 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
   }//for int i
 
 	for (int step=0; step<steps; step++){
-		double position[151] = {0.0};
-		double pointtemp[151] = {0.0};
+		double position[152] = {0.0};
+		double pointtemp[152] = {0.0};
 
 		if (steps_finished + step == 0) {
 			//if(false) {
 			if(rank == 0) {
+				/*
 		    	char orgpath[256];
 		    	char *path = getcwd(orgpath, 256);
 		    	
@@ -988,16 +989,19 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			    if (rc < 0) {
 			        std::cerr << "switch back working directory failed" << std::endl;
 			    }
-
+				*/
 			    //std::cout << "result is \n" << result << std::endl;
-			    std::stringstream ss(result);
+			    std::ifstream t("temperature_field.txt");
+			    std::stringstream ss;
+			    ss << t.rdbuf();
+			    //std::stringstream ss(result);
 			    int index = 0; 
 			    //std::cout << "ss is \n" << ss.str() << std::endl;
 			    while(ss >> position[index] && ss >> pointtemp[index++]) {}
-			    //for(int tt = 0; tt < 151; tt++) std::cout << std::setw(10) << pointtemp[tt];
+			    //for(int tt = 0; tt < 152; tt++) std::cout << std::setw(10) << pointtemp[tt];
 			    //std::cout << "\n\n" << std::endl;
-
-				int j = 0, len = 151;
+				
+				int j = 0, len = 152;
 				for(int i = 1; i < len; i++) {
 					double prev = pointtemp[i-1];
 					double slope = (pointtemp[i] - pointtemp[i-1]) / (position[i] / domainLen  - position[i-1] / domainLen);
@@ -1158,11 +1162,11 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			    int index = 0; 
 			    //std::cout << "ss is \n" << ss.str() << std::endl;
 			    while(ss >> position[index] && ss >> pointtemp[index++]) {}
-			    //for(int tt = 0; tt < 151; tt++) std::cout << std::setw(10) << pointtemp[tt];
+			    //for(int tt = 0; tt < 152; tt++) std::cout << std::setw(10) << pointtemp[tt];
 			    //std::cout << "\n\n" << std::endl;
 
 
-				int j = 0, len = 151;
+				int j = 0, len = 152;
 				for(int i = 1; i < len; i++) {
 					double prev = pointtemp[i-1];
 					double slope = (pointtemp[i] - pointtemp[i-1]) / (position[i] / domainLen  - position[i-1] / domainLen);
