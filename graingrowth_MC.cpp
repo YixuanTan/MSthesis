@@ -38,19 +38,19 @@
 #include"output.cpp"
 
 // grid point dimension
-int dim_x = 10000; 
-int dim_y = 1000; 
+int dim_x = 1000; 
+int dim_y = 500; 
 int dim_z = 700; 
 
 int grad_pos_start = 0;
-int grad_pos_end = 2000;
+int grad_pos_end = 100;
 int mid_check = (grad_pos_end + grad_pos_start) / 2;
 int delta = 0;
 
 double domainLen = 10.0;
 int update_period = 3;
 int update_count = 0;
-double tempFullSpace[10000];
+double tempFullSpace[1000];
 
 /* ------- Al-Cu alloy film
 double lambda = 3.75e-3; //This is fixed from Monte Carlo simulation, so do not change it.  here 10 um is the domain size, so each pixel is 10 nm, all length unit should be with um.
@@ -66,8 +66,8 @@ double R = 8.314;
 
 // ---------Cu film
 double lambda = 1*1.0e-3;  //length unit is in mm, each pixel is 0.275 um
-double L_initial = 4*1.0e-3; // L_initial is for "starting" size in simulation, with physical unit
-double L0 = 4*1.0e-3;  // L0 is for "starting" size in experiment, with physical unit
+double L_initial = 40*1.0e-3; // L_initial is for "starting" size in simulation, with physical unit
+double L0 = 40*1.0e-3;  // L0 is for "starting" size in experiment, with physical unit
 double K1 = 0.7498; // 0.6263; // 
 double m = 2.2867; // 2.0697; // 
 double n1 = 1.0/m;
@@ -82,7 +82,7 @@ namespace MMSP {
 
   	template <int dim> void UpdateLocalTmp(MMSP::grid<dim, unsigned long>& grid, double tempFullSpace[]){
 		//int rank = MPI::COMM_WORLD.Get_rank();
-		//if(rank == 0) for(int tt = 0; tt < 152; tt++) std::cout << pointtemp[tt] << std::endl;
+		//if(rank == 0) for(int tt = 0; tt < 151; tt++) std::cout << pointtemp[tt] << std::endl;
 
 		int rank = MPI::COMM_WORLD.Get_rank();
 		
@@ -719,7 +719,7 @@ template <int dim> void calculateGrainSizeDist(MMSP::grid<dim, unsigned long>& g
 }
 
 template <int dim> void verifyColumnar(MMSP::grid<dim, unsigned long>& grid, int columnar_direction_grains[]){
-	int lowbound = grad_pos_start, upbound = grad_pos_end - 10;
+	int lowbound = grad_pos_start + 20, upbound = grad_pos_end - 20;
 	if(x0(grid, 0) > upbound || x1(grid, 0) < lowbound) return;
 	for(int cody = x0(grid, 1); cody < x1(grid, 1); cody++) { // x direction is where temperature varies		
 		columnar_direction_grains[cody] = 0;
@@ -950,13 +950,12 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
   }//for int i
 
 	for (int step=0; step<steps; step++){
-		double position[152] = {0.0};
-		double pointtemp[152] = {0.0};
+		double position[151] = {0.0};
+		double pointtemp[151] = {0.0};
 
 		if (steps_finished + step == 0) {
 			//if(false) {
 			if(rank == 0) {
-				/*
 		    	char orgpath[256];
 		    	char *path = getcwd(orgpath, 256);
 		    	
@@ -989,19 +988,16 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			    if (rc < 0) {
 			        std::cerr << "switch back working directory failed" << std::endl;
 			    }
-				*/
+
 			    //std::cout << "result is \n" << result << std::endl;
-			    std::ifstream t("temperature_field.txt");
-			    std::stringstream ss;
-			    ss << t.rdbuf();
-			    //std::stringstream ss(result);
+			    std::stringstream ss(result);
 			    int index = 0; 
 			    //std::cout << "ss is \n" << ss.str() << std::endl;
 			    while(ss >> position[index] && ss >> pointtemp[index++]) {}
-			    //for(int tt = 0; tt < 152; tt++) std::cout << std::setw(10) << pointtemp[tt];
+			    //for(int tt = 0; tt < 151; tt++) std::cout << std::setw(10) << pointtemp[tt];
 			    //std::cout << "\n\n" << std::endl;
-				
-				int j = 0, len = 152;
+
+				int j = 0, len = 151;
 				for(int i = 1; i < len; i++) {
 					double prev = pointtemp[i-1];
 					double slope = (pointtemp[i] - pointtemp[i-1]) / (position[i] / domainLen  - position[i-1] / domainLen);
@@ -1093,7 +1089,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 	    	int count_scan = 0;
 	    	for(int c_dir_idx = 0; c_dir_idx < dim_y; c_dir_idx += 10) {
 	    		sum_grain_along_horizon += columnar_direction_grains_global[c_dir_idx];
-	    		sum_intercept_len += (grad_pos_end - grad_pos_start + 1 - 10);
+	    		sum_intercept_len += (grad_pos_end - grad_pos_start + 1 - 40);
 	    		count_scan++;
 	    	}
 	    	double size_along_horizon = 1.0 * sum_intercept_len / sum_grain_along_horizon;
@@ -1110,7 +1106,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			//if(abs(grains_along_line_global[mid_check] - grains_along_line_global[grad_pos_start + check_offset]) < std::max(2.0, 0.1*grains_along_line_global[grad_pos_start])) {		
 				//delta = max(1, (mid_check - grad_pos_start - check_offset)); // delta is a very important parameter to make columnar!
 				//delta = 1; 
-			if(size_along_horizon > 3.0 * size_along_vert || sum_grain_along_horizon <= count_scan) {
+			if(size_along_horizon > 2.0 * size_along_vert || sum_grain_along_horizon <= count_scan) {
 				delta = (mid_check - grad_pos_start) / 2;
 				grad_pos_start += delta;
 				grad_pos_end += delta;
@@ -1162,11 +1158,11 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 			    int index = 0; 
 			    //std::cout << "ss is \n" << ss.str() << std::endl;
 			    while(ss >> position[index] && ss >> pointtemp[index++]) {}
-			    //for(int tt = 0; tt < 152; tt++) std::cout << std::setw(10) << pointtemp[tt];
+			    //for(int tt = 0; tt < 151; tt++) std::cout << std::setw(10) << pointtemp[tt];
 			    //std::cout << "\n\n" << std::endl;
 
 
-				int j = 0, len = 152;
+				int j = 0, len = 151;
 				for(int i = 1; i < len; i++) {
 					double prev = pointtemp[i-1];
 					double slope = (pointtemp[i] - pointtemp[i-1]) / (position[i] / domainLen  - position[i-1] / domainLen);
@@ -1192,7 +1188,7 @@ template <int dim> unsigned long update(MMSP::grid<dim, unsigned long>& grid, in
 		MPI_Bcast(tempFullSpace, dim_x, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 		physical_time += t_inc;
-		if(rank == 0) std::cout << physical_time / 3600 << std::endl;
+		if(rank == 0) std::cout << physical_time << std::endl;
 		UpdateLocalTmc(grid, t_inc);
 		//if((steps_finished + step) % 100 == 0) {
 		UpdateLocalTmp(grid, tempFullSpace);
